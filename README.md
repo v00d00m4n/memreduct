@@ -1,16 +1,18 @@
 Mem Reduct
 ==========
 
+Contact
+-------
 Website: www.henrypp.org  
 Support: support@henrypp.org  
 
 Description
 -----------
-Mem Reduct is a small application that allows you to monitor and clean your computers' memory. Exempt system cache, modified, and idle memory pages. As a result of the program, the memory usage is reduced by ~ 25%. Released under [GNU General Public License v2](http://www.gnu.org/licenses/) license.
+Mem Reduct is a small application that allows you to monitor and clean your computer memory. Exempt system cache, modified, and idle memory pages. As a result of the program, the memory usage is reduced by ~ 25%. Released under [GNU General Public License v2](http://www.gnu.org/licenses/) license.
 
 Translation
 -----------
-Please make translation for Mem Reduct to your language, send me your language files. See "/src/language/" as an example.
+Please make translation Mem Reduct for your language, send me your language files. See "/src/language/" as an example.
 
 Warning
 -------

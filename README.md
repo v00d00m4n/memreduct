@@ -1,18 +1,20 @@
 Mem Reduct
 ==========
-Copyright © 2013 Henry++
+
+Website: www.henrypp.org  
+Support: support@henrypp.org  
 
 Description
 -----------
-Mem Reduct is a small application that allows you to monitor and clean
-your computers' memory. Exempt system cache, modified, and idle memory
-pages. As a result of the program, the memory usage is reduced by ~ 25%.
+Mem Reduct is a small application that allows you to monitor and clean your computers' memory. Exempt system cache, modified, and idle memory pages. As a result of the program, the memory usage is reduced by ~ 25%. Released under [GNU General Public License v2](http://www.gnu.org/licenses/) license.
+
+Translation
+-----------
+Please make translation for Mem Reduct to your language, send me your language files. See "/src/language/" as an example.
 
 Warning
 -------
-The program used undocumented features of system (Native API) to
-clear the memory that have emerged since Windows Vista, so some
-cleaning methods are not available in earlier versions Windows.
+The program used undocumented features of system (Native API) to clear the memory that have emerged since Windows Vista, so some cleaning methods are not available in earlier versions Windows.
 
 Requirements
 ------------
@@ -33,14 +35,9 @@ Features
 - Full source code available
 - Portable, all settings stored in application directory
 
-Support
--------
-- Web:  	http://www.henrypp.org
-- Email:	support@henrypp.org
-
 Changelog
 ---------
-v2.3 (14 July 2012)
+<b>v2.3 (14 July 2012)</b>
 - Improved compatibility with Windows 8 Release Preview
 - Added "Bulgarian" translation (by nahalnik)
 - Added "Chinese (simplified)" translation (by hsxz)
@@ -59,11 +56,11 @@ v2.3 (14 July 2012)
 - Fixed minor bugs
 - Optimized code
 
-v2.2 (24 May 2012)
+<b>v2.2 (24 May 2012)</b>
 - Added new on double-click option "Start memory reduction (silently)"
 - Fixed Auto-Reduct percents
 
-v2.1 (23 May 2012)
+<b>v2.1 (23 May 2012)</b>
 - Added "Portugues" translation (by Lucas Macedo)
 - Added Auto-Reduct configuring
 - Added systray configuring
@@ -80,7 +77,7 @@ v2.1 (23 May 2012)
 - Fixed minor bugs
 - Optimized code
 
-v2.0 (2 April 2012)
+<b>v2.0 (2 April 2012)</b>
 - Added partial support of Windows XP
 - Added support for localizations
 - Added displaying information in sytray
@@ -89,3 +86,5 @@ v2.0 (2 April 2012)
 - Improved user interface
 - Fixed minor bugs
 - Optimized code
+
+<b>Copyright © 2013 Henry++</b>

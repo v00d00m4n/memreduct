@@ -1,31 +1,27 @@
--------------------------------
- Mem Reduct
- Copyright © 2012 Henry++
+Mem Reduct
+----------
+Copyright © 2013 Henry++
 
- GNU General Public License v2
- http://www.gnu.org/licenses/
--------------------------------
-
-DESCRIPTION
+Description
 -----------
 Mem Reduct is a small application that allows you to monitor and clean
 your computers' memory. Exempt system cache, modified, and idle memory
 pages. As a result of the program, the memory usage is reduced by ~ 25%.
 
-WARNING
+Warning
 -------
 The program used undocumented features of system (Native API) to
 clear the memory that have emerged since Windows Vista, so some
 cleaning methods are not available in earlier versions Windows.
 
-REQUIREMENTS
+Requirements
 ------------
 - OS: Windows XP/Server/Vista/Seven/8
 - CPU: 500 mhz
 - HDD: 10 mb
 - RAM: 32 mb
 
-FEATURES
+Features
 --------
 - Displays information about memory usage
 - Displays information about memory usage on systray (icon, balloon tip)
@@ -37,13 +33,13 @@ FEATURES
 - Full source code available
 - Portable, all settings stored in application directory
 
-FEEDBACK
---------
+Support
+-------
 - Web:  	http://www.henrypp.org
 - Email:	support@henrypp.org
 
-HISTORY
--------
+Changelog
+---------
 v2.3 (14 July 2012)
 - Improved compatibility with Windows 8 Release Preview
 - Added "Bulgarian" translation (by nahalnik)

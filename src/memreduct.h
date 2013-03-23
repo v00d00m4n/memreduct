@@ -14,8 +14,8 @@
 // Define
 #define APP_NAME L"Mem Reduct"
 #define APP_NAME_SHORT L"memreduct"
-#define APP_VERSION L"2.3"
-#define APP_VERSION_RES 2,3
+#define APP_VERSION L"2.4"
+#define APP_VERSION_RES 2,4
 #define APP_HOST L"www.henrypp.org"
 #define APP_WEBSITE L"http://" APP_HOST
 #define APP_USERAGENT	APP_NAME L"/" APP_VERSION L" (+" APP_WEBSITE L")"

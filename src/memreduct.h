@@ -22,7 +22,7 @@
 
 #define UID 1337
 #define WM_TRAYICON (WM_APP + UID)
-#define PAGE_COUNT 4
+#define PAGE_COUNT 5
 
 #define COLOR_TEXT RGB(90, 90, 90)
 #define COLOR_GREEN RGB(0, 255, 0)
@@ -43,25 +43,25 @@ struct CONFIG
 	WCHAR szCurrentDir[MAX_PATH]; // current dir
 	WCHAR szUnit[50]; // mb OR kb
 
-	UINT uUnitDivider; // divider for unit (kb - 1024, mb - 1048576)
-
 	BOOL bAdminPrivilege; // if admin rights
 	BOOL bSupportedOS; // if running on Vista or above (6.0)
 
 	BOOL bAutoReduct; // use Auto-Reduct
-	BOOL bColorIndication; // use color indication
+	BOOL bColorIndicationTray; // use color indication for tray
+	BOOL bColorIndicationListView; // use color indication for listview
 	BOOL bBalloonShow; // balloon show switch
 
+	UINT uUnitDivider; // divider for unit (kb - 1024, mb - 1048576)
 	UINT uAutoReductPercents; // Auto-Reduct threshold
 	UINT uYellowLevel; // yellow color threshold
 	UINT uRedLevel; // red color threshold
 
 	BOOL bSettingsDlg;
 	BOOL bReductDlg;
-	
-	DWORD dwLastReduct;
-	DWORD dwLastYellow;
-	DWORD dwLastRed;
+
+	DWORD dwLastBalloon;
+
+	LOGFONT lf;
 };
 
 struct PAGES

@@ -13,6 +13,7 @@
 #define IDD_PAGE_2								104
 #define IDD_PAGE_3								105
 #define IDD_PAGE_4								106
+#define IDD_PAGE_5								107
 
 // Menu Id
 #define IDM_MAIN		                        100
@@ -31,10 +32,11 @@
 // Page #1 Dlg
 #define IDC_CHECK_UPDATE_AT_STARTUP_CHK			100
 #define IDC_LOAD_ON_STARTUP_CHK					101
-#define IDC_COLOR_INDICATION_CHK				102
-#define IDC_MEASUREMENT_UNIT_CB					103
-#define IDC_LANGUAGE_CB							104
-#define IDC_LANGUAGE_INFO						105
+#define IDC_SHOW_AS_KILOBYTE_CHK				102
+#define IDC_COLOR_INDICATION_TRAY_CHK			103
+#define IDC_COLOR_INDICATION_LISTVIEW_CHK		104
+#define IDC_LANGUAGE_CB							105
+#define IDC_LANGUAGE_INFO						106
 
 // Page #2 Dlg
 #define IDC_WORKING_SET_CHK						107
@@ -54,20 +56,25 @@
 #define IDC_DOUBLECLICK_CB						118
 
 // Page #4 Dlg
-#define IDC_BALLOON_SHOW_CHK					119
-#define IDC_BALLOON_AUTOREDUCT_CHK				120
-#define IDC_BALLOON_YELLOWLEVEL_CHK				121
-#define IDC_BALLOON_REDLEVEL_CHK				122
-#define IDC_BALLOONINTERVAL						123
-								
+#define IDC_TRAY_SHOW_BORDER_CHK				119
+#define IDC_TRAY_CHANGE_BACKGROUND_CHK			120
+#define IDC_TRAY_FONT_BTN						121
+
+// Page #5 Dlg
+#define IDC_BALLOON_SHOW_CHK					122
+#define IDC_BALLOON_AUTOREDUCT_CHK				123
+#define IDC_BALLOON_YELLOWLEVEL_CHK				124
+#define IDC_BALLOON_REDLEVEL_CHK				125
+#define IDC_BALLOONINTERVAL						126
+
 // Common Controls
 #define IDC_OK									1000
 #define IDC_CANCEL								1001
 #define IDC_APPLY								1002
 
-#define IDC_LABEL_1								2000
-#define IDC_LABEL_2								2001
-#define IDC_LABEL_3								2002
+#define IDC_TITLE_1								2000
+#define IDC_TITLE_2								2001
+#define IDC_TITLE_3								2002
 
 // Main Menu
 #define IDM_SETTINGS                            40000
@@ -110,9 +117,6 @@
 #define IDS_BALLOON_YELLOWLEVEL                 10014
 #define IDS_BALLOON_REDLEVEL                    10015
 
-#define IDS_UNIT_KB_FULL		                10016
-#define IDS_UNIT_MB_FULL	                    10017
-
 #define IDS_UNIT_KB		                        10018
 #define IDS_UNIT_MB		                        10019
 
@@ -127,13 +131,14 @@
 #define IDS_PAGE_2								10026
 #define IDS_PAGE_3								10027
 #define IDS_PAGE_4								10028
+#define IDS_PAGE_5								10029
 
-#define IDS_DOUBLECLICK_1						10029
-#define IDS_DOUBLECLICK_2						10030
-#define IDS_DOUBLECLICK_3						10031
-#define IDS_DOUBLECLICK_4						10032
+#define IDS_DOUBLECLICK_1						10030
+#define IDS_DOUBLECLICK_2						10031
+#define IDS_DOUBLECLICK_3						10032
+#define IDS_DOUBLECLICK_4						10033
 
-#define IDS_ONTOP								10033
+#define IDS_ONTOP								10034
 
 // Icons
 #define IDI_MAIN	                            100

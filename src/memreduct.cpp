@@ -86,12 +86,12 @@ UINT WINAPI CheckUpdates(LPVOID lpParam)
 }
 
 // Memory Info Wrapper
-BOOL mi_wrapper(MEMORYSTATUSEX* msex, DWORD dwSize)
+BOOL mi_wrapper(LPMEMORYSTATUSEX lpmsex, DWORD dwSize)
 {
-	msex->dwLength = dwSize;
-	GlobalMemoryStatusEx(msex);
+	lpmsex->dwLength = dwSize;
+	GlobalMemoryStatusEx(lpmsex);
 
-	return msex->dwMemoryLoad;
+	return lpmsex->dwMemoryLoad;
 }
 
 // Show Balloon Tip
@@ -126,32 +126,76 @@ BOOL ShowBalloonTip(DWORD dwInfoFlags, LPCWSTR lpcszTitle, LPCWSTR lpcszMessage)
 HICON CreateMemIcon(DWORD dwData)
 {
 	// Icon Rect
-	RECT rc = {1, 1, 32, 32};
+	RECT rc = {0, 0, 16, 16};
 
 	// Initialize Color
-	COLORREF clrTextColor = COLOR_GREEN;
-	COLORREF clrBkColor = 0;
+	COLORREF clrTextColor = ini.read(APP_NAME_SHORT, L"TrayTextClr", COLOR_GREEN);
+	COLORREF clrIndicator = NULL;
 
 	if(cfg.bColorIndicationTray)
 	{
 		if(dwData >= cfg.uRedLevel)
 		{
-			clrBkColor = COLOR_RED;
+			clrIndicator = ini.read(APP_NAME_SHORT, L"DangerClr", COLOR_RED);
 		}
 		else if(dwData >= cfg.uYellowLevel)
 		{
-			clrBkColor = COLOR_YELLOW;
+			clrIndicator = ini.read(APP_NAME_SHORT, L"WarningClr", COLOR_YELLOW);;
 		}
 	}
 
 	BOOL TrayChangeBackground = ini.read(APP_NAME_SHORT, L"TrayChangeBackground", 1);
 
 	// Create Bitmap
-	HDC hDC = GetDC(0);
+    HDC hDC = GetDC(NULL);
+    HDC hCompatibleDC = CreateCompatibleDC (hDC);
+	HBITMAP hBitmap = CreateCompatibleBitmap(hDC, rc.right, rc.bottom);
+    HBITMAP hBitmapMask = CreateCompatibleBitmap(hDC, rc.right, rc.bottom);
+	ReleaseDC(NULL, hDC);
+
+    HBITMAP hOldBitMap = (HBITMAP)SelectObject (hCompatibleDC, hBitmap);
+
+	FillRect(hCompatibleDC, &rc, CreateSolidBrush(TrayChangeBackground && clrIndicator ? clrIndicator : ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", COLOR_BACKGROUND)));
+
+	HFONT hTrayFont = CreateFontIndirect(&cfg.lf);
+	SelectObject(hCompatibleDC, hTrayFont);
+
+	// Draw Text
+	SetTextColor(hCompatibleDC, !TrayChangeBackground && clrIndicator ? clrIndicator : clrTextColor);
+	SetBkMode(hCompatibleDC, TRANSPARENT);
+
+	WCHAR szBuffer[10] = {0};
+	StringCchPrintf(szBuffer, 10, L"%d\0", dwData);
+	DrawText(hCompatibleDC, szBuffer, lstrlen(szBuffer), &rc, DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP);
+
+	// Draw Border
+	if(ini.read(APP_NAME_SHORT, L"TrayShowBorder", 0))
+	{
+		//rc.left = rc.top = 1;
+
+		HBRUSH hBrush = CreateSolidBrush(!TrayChangeBackground && clrIndicator ? clrIndicator : clrTextColor);
+		HRGN hRgn = CreateRectRgnIndirect(&rc);
+		FrameRgn(hCompatibleDC, hRgn, hBrush, 1, 1);
+	}
+
+	SelectObject(hDC, hOldBitMap);
+    hOldBitMap = NULL;
+
+	ICONINFO ii = {TRUE, 0, 0, hBitmapMask, hBitmap};
+	HICON hIcon = CreateIconIndirect(&ii);
+
+    DeleteObject(SelectObject (hCompatibleDC, hTrayFont));
+    DeleteDC(hCompatibleDC);
+    DeleteDC(hDC);
+    DeleteObject(hBitmap);
+    DeleteObject(hBitmapMask);
+
+	/*
+	HDC hDC = GetDC(NULL);
 	HBRUSH hBrush = NULL;
 	HRGN hRect = NULL;
 	HBITMAP hBmp = CreateCompatibleBitmap(hDC, rc.right, rc.bottom);
-	ReleaseDC(0, hDC);
+	ReleaseDC(NULL, hDC);
 
 	// Create DC
 	HDC memDC = CreateCompatibleDC(0);
@@ -163,7 +207,7 @@ HICON CreateMemIcon(DWORD dwData)
 
 	// Draw Text
 	SetTextColor(memDC, TrayChangeBackground ? clrTextColor : clrBkColor);
-	SetBkColor(memDC, TrayChangeBackground ? clrBkColor : 0);
+	SetBkColor(memDC, TrayChangeBackground ? clrBkColor : ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", 0));
 	//SetBkMode(memDC, TRANSPARENT);
 
 	WCHAR szBuffer[10] = {0};
@@ -179,7 +223,7 @@ HICON CreateMemIcon(DWORD dwData)
 	}
 	
 	// Bitmap To Icon
-	ICONINFO ii = {1, 0, 0, hBmp, hBmp};
+	ICONINFO ii = {TRUE, 0, 0, hBmp, hBmp};
 	HICON hIcon = CreateIconIndirect(&ii);
 
 	// Free Memory
@@ -187,7 +231,7 @@ HICON CreateMemIcon(DWORD dwData)
 	DeleteObject(hBrush);
 	DeleteObject(hRect);
 	DeleteObject(hBmp);
-	DeleteDC(memDC);
+	DeleteDC(memDC);*/
 
 	return hIcon;
 }
@@ -690,12 +734,27 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 				case NM_CLICK:
 				case NM_RETURN:
 				{
-					NMLINK* nmlink = (NMLINK*)lParam;
-					LITEM item = nmlink->item;
-	
-					if(item.szUrl)
-						ShellExecute(hwndDlg, 0, item.szUrl, 0, 0, SW_SHOW);
-	
+					PNMLINK nmlink = (PNMLINK)lParam;
+
+					if(nmlink->item.szUrl[0])
+					{
+						ShellExecute(hwndDlg, 0, nmlink->item.szUrl, 0, 0, SW_SHOW);
+					}
+					else if(nmlink->item.szID[0])
+					{
+						CHOOSECOLOR cc = {0};
+						COLORREF cr[16] = {0xEF892D};
+
+						cc.lStructSize = sizeof(cc);
+						cc.Flags = CC_RGBINIT;
+						cc.hwndOwner = hwndDlg;
+						cc.lpCustColors = cr;
+						cc.rgbResult = ini.read(APP_NAME_SHORT, nmlink->item.szID, 0);
+
+						if(ChooseColor(&cc))
+							ini.write(APP_NAME_SHORT, nmlink->item.szID, cc.rgbResult);
+					}
+
 					break;
 				}
 
@@ -1110,7 +1169,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			StringCchCopy(cfg.szUnit, _countof(cfg.szUnit), ls(cfg.hLocale, iBuffer ? IDS_UNIT_KB : IDS_UNIT_MB));
 
 			StringCchCopy(cfg.lf.lfFaceName, _countof(cfg.lf.lfFaceName), ini.read(APP_NAME_SHORT, L"FontFace", MAX_PATH, L"Tahoma"));
-			cfg.lf.lfHeight = ini.read(APP_NAME_SHORT, L"FontHeight", -18);
+			cfg.lf.lfHeight = ini.read(APP_NAME_SHORT, L"FontHeight", -11);
 
 			// Enable Privileges
 			if(cfg.bAdminPrivilege)
@@ -1273,11 +1332,11 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 							if(lplvcd->iSubItem == 1)
 							{
 								if(cfg.bColorIndicationListView && (UINT)lplvcd->nmcd.lItemlParam >= cfg.uRedLevel)
-									lplvcd->clrText = COLOR_RED_TEXT;
+									lplvcd->clrText = ini.read(APP_NAME_SHORT, L"DangerClr", COLOR_RED_TEXT);
 								else if(cfg.bColorIndicationListView && (UINT)lplvcd->nmcd.lItemlParam >= cfg.uYellowLevel)
-									lplvcd->clrText = COLOR_YELLOW_TEXT;
+									lplvcd->clrText = ini.read(APP_NAME_SHORT, L"WarningClr", COLOR_YELLOW_TEXT);
 								else
-									lplvcd->clrText = COLOR_TEXT;
+									lplvcd->clrText = ini.read(APP_NAME_SHORT, L"ListViewTextClr", COLOR_TEXT);
 
 								lResult = CDRF_NEWFONT;
 							}

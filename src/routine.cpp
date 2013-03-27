@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 11/02/13
+// lastmod: 27/03/13
 
 #include "routine.h"
 
@@ -692,7 +692,7 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				{
 					PNMLINK lpnmlnk = (PNMLINK)lParam;
 
-					if(lstrlen(lpnmlnk->item.szUrl))
+					if(lpnmlnk->item.szUrl[0])
 						ShellExecute(hwndDlg, 0, lpnmlnk->item.szUrl, NULL, NULL, SW_SHOWDEFAULT);
 	
 					break;

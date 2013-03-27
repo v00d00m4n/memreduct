@@ -24,6 +24,7 @@
 #define WM_TRAYICON (WM_APP + UID)
 #define PAGE_COUNT 5
 
+#define COLOR_BACKGROUND RGB(90, 90, 90)
 #define COLOR_TEXT RGB(90, 90, 90)
 #define COLOR_GREEN RGB(0, 255, 0)
 #define COLOR_GREEN_TEXT RGB(0, 128, 0)

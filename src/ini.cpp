@@ -8,37 +8,36 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 03/02/13
+// lastmod: 30/03/13
 
 #include "ini.h"
 
 BOOL INI::make_write(LPCWSTR lpcszSection, LPCWSTR lpcszKey, LPCWSTR lpcszValue)
 {
-	return WritePrivateProfileString(lpcszSection, lpcszKey, lpcszValue, ini_path);
+	return WritePrivateProfileString(lpcszSection, lpcszKey, lpcszValue, this->path);
 }
 		
 DWORD INI::make_read(LPCWSTR lpcszSection, LPCWSTR lpcszKey, LPWSTR lpcszReturned, DWORD dwSize, LPCWSTR lpcszDefault)
 {
-	return GetPrivateProfileString(lpcszSection, lpcszKey, lpcszDefault, lpcszReturned, dwSize, ini_path);
+	return GetPrivateProfileString(lpcszSection, lpcszKey, lpcszDefault, lpcszReturned, dwSize, this->path);
 }
 
-// Load File
-void INI::load(LPCWSTR lpcszPath)
+// Set Ini Path
+VOID INI::set_path(LPCWSTR lpcszPath)
 {
-	ini_path = lpcszPath;
+	this->path = lpcszPath;
 }
 
 // Get Ini Path
-CString INI::get_ini_path()
+CString INI::get_path()
 {
-	return ini_path;
+	return this->path;
 }
 
 // Write Int
 BOOL INI::write(LPCWSTR lpcszSection, LPCWSTR lpcszKey, DWORD dwValue)
 {
 	buffer.Format(L"%d\0", dwValue);
-
 	return make_write(lpcszSection, lpcszKey, buffer);
 }
 
@@ -51,7 +50,7 @@ BOOL INI::write(LPCWSTR lpcszSection, LPCWSTR lpcszKey, LPCWSTR lpcszValue)
 // Read Int
 UINT INI::read(LPCWSTR lpcszSection, LPCWSTR lpcszKey, INT iDefault)
 {
-	return GetPrivateProfileInt(lpcszSection, lpcszKey, iDefault, ini_path);
+	return GetPrivateProfileInt(lpcszSection, lpcszKey, iDefault, this->path);
 }
 
 // Read String

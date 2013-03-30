@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 03/02/13
+// lastmod: 30/03/13
 
 #ifndef __INI_H__
 #define __INI_H__
@@ -19,17 +19,18 @@
 class INI
 {
 	protected:
-		CString ini_path, buffer;
+		CString path; // ini path
+		CString buffer; // just buffer
 
 		BOOL make_write(LPCWSTR lpcszSection, LPCWSTR lpcszKey, LPCWSTR lpcszValue);
 		DWORD make_read(LPCWSTR lpcszSection, LPCWSTR lpcszKey, LPWSTR lpcszReturned, DWORD dwSize, LPCWSTR lpcszDefault);
 
 	public:
-		// Load File
-		void load(LPCWSTR lpszPath);
+		// Set Ini Path
+		VOID set_path(LPCWSTR lpcszPath);
 
 		// Get Ini Path
-		CString get_ini_path();
+		CString get_path();
 
 		// Write Int
 		BOOL write(LPCWSTR lpcszSection, LPCWSTR lpcszKey, DWORD dwValue);

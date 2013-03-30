@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 27/03/13
+// lastmod: 30/03/13
 
 #include "routine.h"
 
@@ -296,6 +296,26 @@ BOOL IsAdmin()
 	return bResult;
 }
 
+// UAC elevation checker
+BOOL IsUnderUAC()
+{
+	HANDLE hToken = NULL; 
+	TOKEN_ELEVATION_TYPE tet; 
+	DWORD dwSize = 0;;
+
+	// for older OS compatible
+	if(!ValidWindowsVersion(6, 0))
+		return FALSE;
+
+	if(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken) && GetTokenInformation(hToken, TokenElevationType, &tet, sizeof(tet), &dwSize) && tet == TokenElevationTypeLimited)
+		return TRUE;
+
+	if(hToken)
+		CloseHandle(hToken);
+
+	return FALSE;
+}
+
 // Check is File Exists
 BOOL FileExists(LPCTSTR lpcszPath)
 {
@@ -389,7 +409,7 @@ VOID ToggleVisible(HWND hWnd)
 }
 
 // Create Autorun Entry in Registry
-VOID CreateAutorunEntry(LPCWSTR lpszName, BOOL bRemove)
+VOID CreateAutorunEntry(LPCWSTR lpszName, BOOL bCreate)
 {
 	HKEY hKey = NULL;
 	WCHAR szBuffer[MAX_PATH] = {0};
@@ -397,25 +417,34 @@ VOID CreateAutorunEntry(LPCWSTR lpszName, BOOL bRemove)
 	if(RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_ALL_ACCESS, &hKey) != ERROR_SUCCESS)
 		return;
 
-	LONG lErrCode = RegQueryValueEx(hKey, lpszName, 0, 0, 0, 0);
-
-	if(bRemove)
+	if(bCreate)
 	{
-		if(lErrCode != ERROR_FILE_NOT_FOUND)
-			RegDeleteValue(hKey, lpszName);
+		GetModuleFileName(NULL, szBuffer, MAX_PATH);
+		PathQuoteSpaces(szBuffer);
+
+		RegSetValueEx(hKey, lpszName, 0, REG_SZ, (LPBYTE)szBuffer, MAX_PATH);
 	}
 	else
 	{
-		if(lErrCode == ERROR_FILE_NOT_FOUND)
-		{
-			GetModuleFileName(NULL, szBuffer, MAX_PATH);
-			PathQuoteSpaces(szBuffer);
-
-			RegSetValueEx(hKey, lpszName, 0, REG_SZ, (LPBYTE)szBuffer, MAX_PATH);
-		}
+		RegDeleteValue(hKey, lpszName);
 	}
 
 	RegCloseKey(hKey);
+}
+
+// Check Autorun Entry in Registry
+BOOL IsAutorunExists(LPCWSTR lpszName)
+{
+	HKEY hKey = NULL;
+
+	if(RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_ALL_ACCESS, &hKey) != ERROR_SUCCESS)
+		return FALSE;
+
+	LONG dwRetCode = RegQueryValueEx(hKey, lpszName, 0, 0, 0, 0);
+
+	RegCloseKey(hKey);
+
+	return dwRetCode == ERROR_SUCCESS;
 }
 
 // String Localizer

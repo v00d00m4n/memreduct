@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 27/03/13
+// lastmod: 30/03/13
 
 #ifndef __ROUTINE_H__
 #define __ROUTINE_H__
@@ -40,6 +40,7 @@ INT Lv_InsertItem(HWND hWnd, INT iCtrlId, CString lpszText, INT iItem, INT iSubI
 
 BOOL ShowEditBalloonTip(HWND hWnd, INT iCtrlId, LPCTSTR lpcszTitle, LPCTSTR lpcszText, INT iIcon);
 BOOL IsAdmin();
+BOOL IsUnderUAC();
 BOOL FileExists(LPCTSTR lpcszPath);
 BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpcszPrivilege, BOOL bEnablePrivilege);
 BOOL ValidWindowsVersion(DWORD dwMajorVersion, DWORD dwMinorVersion);
@@ -49,7 +50,9 @@ CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend = 0, CONST WCHAR cSep
 VOID SetAlwaysOnTop(HWND hWnd, BOOL bEnable);
 VOID CenterDialog(HWND hWnd);
 VOID ToggleVisible(HWND hWnd);
+
 VOID CreateAutorunEntry(LPCWSTR lpszName, BOOL bRemove);
+BOOL IsAutorunExists(LPCWSTR lpszName);
 
 CString ls(HINSTANCE hInstance, UINT uID);
 

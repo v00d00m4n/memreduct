@@ -12,6 +12,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <wininet.h>
+#include <shlobj.h>
 #include <atlstr.h> // cstring
 #include <process.h> // _beginthreadex
 
@@ -125,8 +126,10 @@ BOOL ShowBalloonTip(DWORD dwInfoFlags, LPCWSTR lpcszTitle, LPCWSTR lpcszMessage)
 // Create HICON with Memory Info
 HICON CreateMemIcon(DWORD dwData)
 {
-	// Icon Rect
-	RECT rc = {0, 0, 16, 16};
+	CString buffer;
+	RECT rc = {0, 0, 16, 16}; // icon rect
+
+	BOOL TrayChangeBackground = ini.read(APP_NAME_SHORT, L"TrayChangeBackground", 1);
 
 	// Initialize Color
 	COLORREF clrTextColor = ini.read(APP_NAME_SHORT, L"TrayTextClr", COLOR_GREEN);
@@ -144,19 +147,21 @@ HICON CreateMemIcon(DWORD dwData)
 		}
 	}
 
-	BOOL TrayChangeBackground = ini.read(APP_NAME_SHORT, L"TrayChangeBackground", 1);
-
 	// Create Bitmap
     HDC hDC = GetDC(NULL);
-    HDC hCompatibleDC = CreateCompatibleDC (hDC);
+    HDC hCompatibleDC = CreateCompatibleDC(hDC);
 	HBITMAP hBitmap = CreateCompatibleBitmap(hDC, rc.right, rc.bottom);
     HBITMAP hBitmapMask = CreateCompatibleBitmap(hDC, rc.right, rc.bottom);
 	ReleaseDC(NULL, hDC);
 
-    HBITMAP hOldBitMap = (HBITMAP)SelectObject (hCompatibleDC, hBitmap);
+    HBITMAP hOldBitMap = (HBITMAP)SelectObject(hCompatibleDC, hBitmap);
 
-	FillRect(hCompatibleDC, &rc, CreateSolidBrush(TrayChangeBackground && clrIndicator ? clrIndicator : ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", COLOR_BACKGROUND)));
+	// Instead FillRect
+	COLORREF clrOld = SetBkColor(hCompatibleDC, TrayChangeBackground && clrIndicator ? clrIndicator : ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", COLOR_TRAY_BG));
+	ExtTextOut(hCompatibleDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
+	SetBkColor(hCompatibleDC, clrOld);
 
+	// Create Font
 	HFONT hTrayFont = CreateFontIndirect(&cfg.lf);
 	SelectObject(hCompatibleDC, hTrayFont);
 
@@ -164,74 +169,32 @@ HICON CreateMemIcon(DWORD dwData)
 	SetTextColor(hCompatibleDC, !TrayChangeBackground && clrIndicator ? clrIndicator : clrTextColor);
 	SetBkMode(hCompatibleDC, TRANSPARENT);
 
-	WCHAR szBuffer[10] = {0};
-	StringCchPrintf(szBuffer, 10, L"%d\0", dwData);
-	DrawText(hCompatibleDC, szBuffer, lstrlen(szBuffer), &rc, DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP);
+	buffer.Format(L"%d\0", dwData);
+	DrawText(hCompatibleDC, buffer, buffer.GetLength(), &rc, DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP);
 
 	// Draw Border
 	if(ini.read(APP_NAME_SHORT, L"TrayShowBorder", 0))
 	{
-		//rc.left = rc.top = 1;
-
 		HBRUSH hBrush = CreateSolidBrush(!TrayChangeBackground && clrIndicator ? clrIndicator : clrTextColor);
 		HRGN hRgn = CreateRectRgnIndirect(&rc);
 		FrameRgn(hCompatibleDC, hRgn, hBrush, 1, 1);
+
+		DeleteObject(hBrush);
+		DeleteObject(hRgn);
 	}
 
 	SelectObject(hDC, hOldBitMap);
-    hOldBitMap = NULL;
 
+	// Create Icon
 	ICONINFO ii = {TRUE, 0, 0, hBitmapMask, hBitmap};
 	HICON hIcon = CreateIconIndirect(&ii);
 
-    DeleteObject(SelectObject (hCompatibleDC, hTrayFont));
-    DeleteDC(hCompatibleDC);
-    DeleteDC(hDC);
-    DeleteObject(hBitmap);
-    DeleteObject(hBitmapMask);
-
-	/*
-	HDC hDC = GetDC(NULL);
-	HBRUSH hBrush = NULL;
-	HRGN hRect = NULL;
-	HBITMAP hBmp = CreateCompatibleBitmap(hDC, rc.right, rc.bottom);
-	ReleaseDC(NULL, hDC);
-
-	// Create DC
-	HDC memDC = CreateCompatibleDC(0);
-	SelectObject(memDC, hBmp);
-
-	// Change Font
-	HFONT hTrayFont = CreateFontIndirect(&cfg.lf);
-	SelectObject(memDC, hTrayFont);
-
-	// Draw Text
-	SetTextColor(memDC, TrayChangeBackground ? clrTextColor : clrBkColor);
-	SetBkColor(memDC, TrayChangeBackground ? clrBkColor : ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", 0));
-	//SetBkMode(memDC, TRANSPARENT);
-
-	WCHAR szBuffer[10] = {0};
-	StringCchPrintf(szBuffer, 10, L"%d\0", dwData);
-	DrawText(memDC, szBuffer, wcslen(szBuffer), &rc, DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP);
-
-	// Draw Border
-	if(ini.read(APP_NAME_SHORT, L"TrayShowBorder", 0))
-	{
-		hBrush = CreateSolidBrush(TrayChangeBackground ? clrTextColor : clrBkColor);
-		hRect = CreateRectRgnIndirect(&rc);
-		FrameRgn(memDC, hRect, hBrush, 1, 1);
-	}
-	
-	// Bitmap To Icon
-	ICONINFO ii = {TRUE, 0, 0, hBmp, hBmp};
-	HICON hIcon = CreateIconIndirect(&ii);
-
-	// Free Memory
-	DeleteObject(hTrayFont);
-	DeleteObject(hBrush);
-	DeleteObject(hRect);
-	DeleteObject(hBmp);
-	DeleteDC(memDC);*/
+	// Free Resources
+	DeleteObject(SelectObject(hCompatibleDC, hTrayFont));
+	DeleteDC(hCompatibleDC);
+	DeleteDC(hDC);
+	DeleteObject(hBitmap);
+	DeleteObject(hBitmapMask);
 
 	return hIcon;
 }
@@ -482,9 +445,9 @@ INT_PTR CALLBACK CleanerDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 									if(lplvcd->iSubItem && (LOWORD(lplvcd->nmcd.lItemlParam) == HIWORD(lplvcd->nmcd.lItemlParam)))
 										lplvcd->clrText = COLOR_TEXT;
 									else if(lplvcd->iSubItem == 1)
-										lplvcd->clrText = LOWORD(lplvcd->nmcd.lItemlParam) < HIWORD(lplvcd->nmcd.lItemlParam) ? COLOR_GREEN_TEXT : COLOR_RED_TEXT;
+										lplvcd->clrText = LOWORD(lplvcd->nmcd.lItemlParam) < HIWORD(lplvcd->nmcd.lItemlParam) ? COLOR_GREEN : COLOR_RED;
 									else if(lplvcd->iSubItem == 2)
-										lplvcd->clrText = LOWORD(lplvcd->nmcd.lItemlParam) > HIWORD(lplvcd->nmcd.lItemlParam) ? COLOR_GREEN_TEXT : COLOR_RED_TEXT;
+										lplvcd->clrText = LOWORD(lplvcd->nmcd.lItemlParam) > HIWORD(lplvcd->nmcd.lItemlParam) ? COLOR_GREEN : COLOR_RED;
 								}
 
 								lResult = CDRF_NEWFONT;
@@ -577,7 +540,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 				case 0:
 				{
 					// General
-					CheckDlgButton(hwndDlg, IDC_LOAD_ON_STARTUP_CHK, ini.read(APP_NAME_SHORT, L"LoadOnStartup", 0) ? BST_CHECKED : BST_UNCHECKED);
+					CheckDlgButton(hwndDlg, IDC_LOAD_ON_STARTUP_CHK, IsAutorunExists(APP_NAME) ? BST_CHECKED : BST_UNCHECKED);
 					CheckDlgButton(hwndDlg, IDC_CHECK_UPDATE_AT_STARTUP_CHK, ini.read(APP_NAME_SHORT, L"CheckUpdateAtStartup", 1) ? BST_CHECKED : BST_UNCHECKED);
 					CheckDlgButton(hwndDlg, IDC_SHOW_AS_KILOBYTE_CHK, ini.read(APP_NAME_SHORT, L"ShowAsKilobyte", 0) ? BST_CHECKED : BST_UNCHECKED);
 
@@ -613,12 +576,6 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 						SendDlgItemMessage(hwndDlg, IDC_LANGUAGE_CB, CB_SETCURSEL, 0, 0);
 
 					SendMessage(hwndDlg, WM_COMMAND, MAKELPARAM(IDC_LANGUAGE_CB, CBN_SELENDOK), 0);
-
-					// Indicate NOT Supported Features AND Admin Indication
-					if(!cfg.bAdminPrivilege)
-					{
-						EnableWindow(GetDlgItem(hwndDlg, IDC_LOAD_ON_STARTUP_CHK), 0);
-					}
 
 					break;
 				}
@@ -683,7 +640,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					SendDlgItemMessage(hwndDlg, IDC_RED_LEVEL, UDM_SETPOS32, 0, ini.read(APP_NAME_SHORT, L"RedLevel", 90));
 
 					// Tray double-click
-					for(int i = IDS_DOUBLECLICK_1; i < ((cfg.bAdminPrivilege ? IDS_DOUBLECLICK_4 : IDS_DOUBLECLICK_2) + 1); i++)
+					for(int i = IDS_DOUBLECLICK_1; i < (IDS_DOUBLECLICK_4 + 1); i++)
 						SendDlgItemMessage(hwndDlg, IDC_DOUBLECLICK_CB, CB_ADDSTRING, 0, (LPARAM)ls(cfg.hLocale, i).GetBuffer());
 
 					if(SendDlgItemMessage(hwndDlg, IDC_DOUBLECLICK_CB, CB_SETCURSEL, ini.read(APP_NAME_SHORT, L"OnDoubleClick", 0), 0) == CB_ERR)
@@ -743,10 +700,10 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					else if(nmlink->item.szID[0])
 					{
 						CHOOSECOLOR cc = {0};
-						COLORREF cr[16] = {0xEF892D};
+						COLORREF cr[16] = {COLOR_TRAY_TEXT, COLOR_TRAY_BG, COLOR_TEXT, COLOR_GREEN, COLOR_YELLOW, COLOR_RED};
 
 						cc.lStructSize = sizeof(cc);
-						cc.Flags = CC_RGBINIT;
+						cc.Flags = CC_RGBINIT | CC_FULLOPEN;
 						cc.hwndOwner = hwndDlg;
 						cc.lpCustColors = cr;
 						cc.rgbResult = ini.read(APP_NAME_SHORT, nmlink->item.szID, 0);
@@ -970,11 +927,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 					if(pages.hWnd[0])
 					{
 						// General
-						iBuffer = (IsDlgButtonChecked(pages.hWnd[0], IDC_LOAD_ON_STARTUP_CHK) == BST_CHECKED);
-						ini.write(APP_NAME_SHORT, L"LoadOnStartup", iBuffer);
-
-						if(cfg.bAdminPrivilege)
-							CreateAutorunEntry(APP_NAME, !(iBuffer));
+						CreateAutorunEntry(APP_NAME, (IsDlgButtonChecked(pages.hWnd[0], IDC_LOAD_ON_STARTUP_CHK) == BST_CHECKED));
 
 						ini.write(APP_NAME_SHORT, L"CheckUpdateAtStartup", (IsDlgButtonChecked(pages.hWnd[0], IDC_CHECK_UPDATE_AT_STARTUP_CHK) == BST_CHECKED) ? 1 : 0);
 
@@ -1101,6 +1054,22 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 	return 0;
 }
 
+BOOL EnablePrivileges()
+{
+	HANDLE hToken = NULL;
+
+	if(OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+	{
+		SetPrivilege(hToken, SE_INCREASE_QUOTA_NAME, TRUE);
+		SetPrivilege(hToken, SE_PROF_SINGLE_PROCESS_NAME, TRUE);
+	}
+
+	if(hToken)
+		CloseHandle(hToken);
+
+	return 1;
+}
+
 LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	CString buffer;
@@ -1153,6 +1122,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 			cfg.bSupportedOS = ValidWindowsVersion(6, 0); // if vista (6.0) and later
 			cfg.bAdminPrivilege = IsAdmin(); // if user has admin rights
+			cfg.bUnderUAC = IsUnderUAC();
 
 			cfg.bColorIndicationTray = ini.read(APP_NAME_SHORT, L"ColorIndicationTray", 1);
 			cfg.bColorIndicationListView = ini.read(APP_NAME_SHORT, L"ColorIndicationListView", 1);
@@ -1173,19 +1143,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 			// Enable Privileges
 			if(cfg.bAdminPrivilege)
-			{
-				HANDLE hToken = NULL;
-
-				if(!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken) || !SetPrivilege(hToken, SE_INCREASE_QUOTA_NAME, TRUE) || !SetPrivilege(hToken, SE_PROF_SINGLE_PROCESS_NAME, TRUE))
-					cfg.bAdminPrivilege = 0;
-
-				if(hToken)
-					CloseHandle(hToken);
-			}
-
-			// Autorun
-			if(cfg.bAdminPrivilege)
-				CreateAutorunEntry(APP_NAME, !(ini.read(APP_NAME_SHORT, L"LoadOnStartup", 0)));
+				EnablePrivileges();
 
 			// Configure Listview
 			Lv_SetStyleEx(hwndDlg, IDC_INFO, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE, TRUE);
@@ -1206,20 +1164,8 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 
 			// Set UAC State for Button (for Vista and later)
-			if(cfg.bSupportedOS)
-			{
-				// Set Margin
-				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_GETTEXTMARGIN, 0, (LPARAM)&rc);
-				rc.left = 15;
-				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_SETTEXTMARGIN, 0, (LPARAM)&rc);
-
-				// Set Shield
-				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_SETSHIELD, 0, 1);
-			}
-
-			// Admin Indication for Button
-			if(!cfg.bAdminPrivilege)
-				EnableWindow(GetDlgItem(hwndDlg, IDC_REDUCT), FALSE);
+			if(cfg.bUnderUAC)
+				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_SETSHIELD, 0, TRUE);
 
 			// Create Tray Icon
 			MEMORYSTATUSEX msex = {0};
@@ -1263,10 +1209,6 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			// Destroy Tray
 			if(nid.uID)
 				Shell_NotifyIcon(NIM_DELETE, &nid);
-
-			// Autorun
-			if(cfg.bAdminPrivilege)
-				CreateAutorunEntry(APP_NAME, !(ini.read(APP_NAME_SHORT, L"LoadOnStartup", 0)));
 
 			DestroyWindow(hwndDlg);
 			PostQuitMessage(0);
@@ -1332,9 +1274,9 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 							if(lplvcd->iSubItem == 1)
 							{
 								if(cfg.bColorIndicationListView && (UINT)lplvcd->nmcd.lItemlParam >= cfg.uRedLevel)
-									lplvcd->clrText = ini.read(APP_NAME_SHORT, L"DangerClr", COLOR_RED_TEXT);
+									lplvcd->clrText = ini.read(APP_NAME_SHORT, L"DangerClr", COLOR_RED);
 								else if(cfg.bColorIndicationListView && (UINT)lplvcd->nmcd.lItemlParam >= cfg.uYellowLevel)
-									lplvcd->clrText = ini.read(APP_NAME_SHORT, L"WarningClr", COLOR_YELLOW_TEXT);
+									lplvcd->clrText = ini.read(APP_NAME_SHORT, L"WarningClr", COLOR_YELLOW);
 								else
 									lplvcd->clrText = ini.read(APP_NAME_SHORT, L"ListViewTextClr", COLOR_TEXT);
 
@@ -1630,7 +1572,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, INT nShowCmd)
+INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, INT nShowCmd)
 {
 	CString buffer;
 
@@ -1639,8 +1581,22 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, INT nSho
 
 	// Load Settings
 	GetModuleFileName(NULL, buffer.GetBuffer(MAX_PATH), MAX_PATH);
+	buffer.ReleaseBuffer();
+
 	PathRenameExtension(buffer.GetBuffer(MAX_PATH), L".cfg");
-	ini.load(buffer);
+	buffer.ReleaseBuffer();
+
+	// Save to APPDATA path
+	if(!FileExists(buffer))
+	{
+		ExpandEnvironmentStrings(L"%APPDATA%\\" APP_AUTHOR L"\\" APP_NAME, buffer.GetBuffer(MAX_PATH), MAX_PATH);
+		buffer.ReleaseBuffer();
+
+		SHCreateDirectoryEx(NULL, buffer, NULL);
+		buffer.Append(+ L"\\" APP_NAME_SHORT L".cfg");
+	}
+
+	ini.set_path(buffer);
 
 	// Current Dir
 	PathRemoveFileSpec(buffer.GetBuffer(MAX_PATH));

@@ -12,26 +12,25 @@
 #define __MEMREDUCT_H__
 
 // Define
-#define APP_NAME L"Mem Reduct"
-#define APP_NAME_SHORT L"memreduct"
-#define APP_VERSION L"2.4"
-#define APP_VERSION_RES 2,4
-#define APP_HOST L"www.henrypp.org"
-#define APP_WEBSITE L"http://" APP_HOST
-#define APP_USERAGENT	APP_NAME L"/" APP_VERSION L" (+" APP_WEBSITE L")"
+#define APP_NAME			L"Mem Reduct"
+#define APP_NAME_SHORT		L"memreduct"
+#define APP_AUTHOR			L"Henry++"
+#define APP_VERSION			L"2.4"
+#define APP_VERSION_RES		2,4
+#define APP_HOST			L"www.henrypp.org"
+#define APP_WEBSITE			L"http://" APP_HOST
+#define APP_USERAGENT		APP_NAME L"/" APP_VERSION L" (+" APP_WEBSITE L")"
 
-#define UID 1337
-#define WM_TRAYICON (WM_APP + UID)
-#define PAGE_COUNT 5
+#define UID					1337
+#define WM_TRAYICON			(WM_APP + UID)
+#define PAGE_COUNT			5
 
-#define COLOR_BACKGROUND RGB(90, 90, 90)
-#define COLOR_TEXT RGB(90, 90, 90)
-#define COLOR_GREEN RGB(0, 255, 0)
-#define COLOR_GREEN_TEXT RGB(0, 128, 0)
-#define COLOR_YELLOW RGB(255, 255, 0)
-#define COLOR_YELLOW_TEXT RGB(255, 128, 0)
-#define COLOR_RED RGB(190, 65, 65)
-#define COLOR_RED_TEXT RGB(230, 75, 75)
+#define COLOR_TRAY_TEXT		0xFFFFFF
+#define COLOR_TRAY_BG		0xEF892D
+#define COLOR_TEXT			0x4B4B4B
+#define COLOR_GREEN			0x45711E
+#define COLOR_YELLOW		0x1479C0
+#define COLOR_RED			0x471DB9
 
 // Settings Structure
 struct CONFIG
@@ -45,6 +44,7 @@ struct CONFIG
 	WCHAR szUnit[50]; // mb OR kb
 
 	BOOL bAdminPrivilege; // if admin rights
+	BOOL bUnderUAC;
 	BOOL bSupportedOS; // if running on Vista or above (6.0)
 
 	BOOL bAutoReduct; // use Auto-Reduct

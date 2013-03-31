@@ -32,40 +32,42 @@
 // Page #1 Dlg
 #define IDC_CHECK_UPDATE_AT_STARTUP_CHK			100
 #define IDC_LOAD_ON_STARTUP_CHK					101
-#define IDC_SHOW_AS_KILOBYTE_CHK				102
-#define IDC_COLOR_INDICATION_TRAY_CHK			103
-#define IDC_COLOR_INDICATION_LISTVIEW_CHK		104
-#define IDC_LANGUAGE_CB							105
-#define IDC_LANGUAGE_INFO						106
+#define IDC_ALWAYS_ON_TOP_CHK					102
+#define IDC_SHOW_AS_KILOBYTE_CHK				103
+#define IDC_COLOR_INDICATION_TRAY_CHK			104
+#define IDC_COLOR_INDICATION_LISTVIEW_CHK		105
+#define IDC_LANGUAGE_CB							106
+#define IDC_LANGUAGE_INFO						107
 
 // Page #2 Dlg
-#define IDC_WORKING_SET_CHK						107
-#define IDC_SYSTEM_WORKING_SET_CHK				108
-#define IDC_MODIFIED_PAGELIST_CHK				109
-#define IDC_STANDBY_PAGELIST_CHK				110
+#define IDC_WORKING_SET_CHK						108
+#define IDC_SYSTEM_WORKING_SET_CHK				109
+#define IDC_MODIFIED_PAGELIST_CHK				110
+#define IDC_STANDBY_PAGELIST_CHK				111
 												
-#define IDC_ASK_BEFORE_CLEANING_CHK				111
-#define IDC_AUTOREDUCT_CHK						112
-#define IDC_AUTOREDUCT_TB						113
-#define IDC_AUTOREDUCT_PERCENT					114
+#define IDC_ASK_BEFORE_CLEANING_CHK				112
+#define IDC_AUTOREDUCT_CHK						113
+#define IDC_AUTOREDUCT_TB						114
+#define IDC_AUTOREDUCT_PERCENT					115
 
 // Page #3 Dlg									
-#define IDC_REFRESHRATE							115
-#define IDC_YELLOW_LEVEL						116
-#define IDC_RED_LEVEL							117
-#define IDC_DOUBLECLICK_CB						118
+#define IDC_REFRESHRATE							116
+#define IDC_YELLOW_LEVEL						117
+#define IDC_RED_LEVEL							118
+#define IDC_DOUBLECLICK_CB						119
+#define IDC_TRAYMEMORYREGION_CB					120
 
 // Page #4 Dlg
-#define IDC_TRAY_SHOW_BORDER_CHK				119
-#define IDC_TRAY_CHANGE_BACKGROUND_CHK			120
-#define IDC_TRAY_FONT_BTN						121
+#define IDC_TRAY_SHOW_BORDER_CHK				121
+#define IDC_TRAY_CHANGE_BACKGROUND_CHK			122
+#define IDC_TRAY_FONT_BTN						123
 
 // Page #5 Dlg
-#define IDC_BALLOON_SHOW_CHK					122
-#define IDC_BALLOON_AUTOREDUCT_CHK				123
-#define IDC_BALLOON_YELLOWLEVEL_CHK				124
-#define IDC_BALLOON_REDLEVEL_CHK				125
-#define IDC_BALLOONINTERVAL						126
+#define IDC_BALLOON_SHOW_CHK					124
+#define IDC_BALLOON_AUTOREDUCT_CHK				125
+#define IDC_BALLOON_YELLOWLEVEL_CHK				126
+#define IDC_BALLOON_REDLEVEL_CHK				127
+#define IDC_BALLOONINTERVAL						128
 
 // Common Controls
 #define IDC_OK									1000
@@ -117,28 +119,26 @@
 #define IDS_BALLOON_YELLOWLEVEL                 10014
 #define IDS_BALLOON_REDLEVEL                    10015
 
-#define IDS_UNIT_KB		                        10018
-#define IDS_UNIT_MB		                        10019
+#define IDS_UNIT_KB		                        10016
+#define IDS_UNIT_MB		                        10017
 
-#define IDS_CLEANER_COL_1	                    10020
-#define IDS_CLEANER_COL_2	                    10021
-#define IDS_CLEANER_COL_3	                    10022
+#define IDS_CLEANER_COL_1	                    10018
+#define IDS_CLEANER_COL_2	                    10019
+#define IDS_CLEANER_COL_3	                    10020
 												
-#define IDS_CLEANER_SELECTAREA	                10023
-#define IDS_CLEANER_WARNING			            10024
+#define IDS_CLEANER_SELECTAREA	                10021
+#define IDS_CLEANER_WARNING			            10022
 												
-#define IDS_PAGE_1								10025
-#define IDS_PAGE_2								10026
-#define IDS_PAGE_3								10027
-#define IDS_PAGE_4								10028
-#define IDS_PAGE_5								10029
+#define IDS_PAGE_1								10023
+#define IDS_PAGE_2								10024
+#define IDS_PAGE_3								10025
+#define IDS_PAGE_4								10026
+#define IDS_PAGE_5								10027
 
-#define IDS_DOUBLECLICK_1						10030
-#define IDS_DOUBLECLICK_2						10031
-#define IDS_DOUBLECLICK_3						10032
-#define IDS_DOUBLECLICK_4						10033
-
-#define IDS_ONTOP								10034
+#define IDS_DOUBLECLICK_1						10028
+#define IDS_DOUBLECLICK_2						10029
+#define IDS_DOUBLECLICK_3						10030
+#define IDS_DOUBLECLICK_4						10031
 
 // Icons
 #define IDI_MAIN	                            100

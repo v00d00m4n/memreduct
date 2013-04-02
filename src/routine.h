@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 30/03/13
+// lastmod: 03/04/13
 
 #ifndef __ROUTINE_H__
 #define __ROUTINE_H__
@@ -41,6 +41,7 @@ INT Lv_InsertItem(HWND hWnd, INT iCtrlId, CString lpszText, INT iItem, INT iSubI
 BOOL ShowEditBalloonTip(HWND hWnd, INT iCtrlId, LPCTSTR lpcszTitle, LPCTSTR lpcszText, INT iIcon);
 BOOL IsAdmin();
 BOOL IsUnderUAC();
+BOOL RunElevated(HWND hWnd, LPCTSTR pszPath, LPCTSTR pszParameters = NULL);
 BOOL FileExists(LPCTSTR lpcszPath);
 BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpcszPrivilege, BOOL bEnablePrivilege);
 BOOL ValidWindowsVersion(DWORD dwMajorVersion, DWORD dwMinorVersion);
@@ -55,6 +56,7 @@ VOID CreateAutorunEntry(LPCWSTR lpszName, BOOL bRemove);
 BOOL IsAutorunExists(LPCWSTR lpszName);
 
 CString ls(HINSTANCE hInstance, UINT uID);
+INT VersionCompare(CString version1, CString version2);
 
 CString ClipboardGet();
 BOOL ClipboardPut(CString buffer);

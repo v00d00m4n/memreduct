@@ -140,6 +140,8 @@
 #define IDS_DOUBLECLICK_3						10030
 #define IDS_DOUBLECLICK_4						10031
 
+#define IDS_UAC_WARNING							10032
+
 // Icons
 #define IDI_MAIN	                            100
 

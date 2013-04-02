@@ -40,11 +40,11 @@ struct CONFIG
 
 	HWND hWnd; // main window handle
 
-	WCHAR szCurrentDir[MAX_PATH]; // current dir
-	WCHAR szUnit[50]; // mb OR kb
+	CString szCurrentDir; // current dir
+	WCHAR szUnit[16]; // mb OR kb
 
 	BOOL bAdminPrivilege; // if admin rights
-	BOOL bUnderUAC;
+	BOOL bUnderUAC; // if running under UAC
 	BOOL bSupportedOS; // if running on Vista or above (6.0)
 
 	BOOL bAutoReduct; // use Auto-Reduct
@@ -65,7 +65,7 @@ struct CONFIG
 	LOGFONT lf;
 };
 
-struct PAGES
+typedef struct _TAB_PAGES
 {
 	INT iTitle[PAGE_COUNT];
 	INT iDialog[PAGE_COUNT];
@@ -74,7 +74,28 @@ struct PAGES
 	HWND hCurrent;
 	
 	RECT rc;
-};
+} TAB_PAGES, *LPTAB_PAGES;
+
+typedef struct _MEMORY_USAGE
+{
+	// Physical
+    DWORD dwPercentPhys;
+    DWORDLONG ullTotalPhys;
+    DWORDLONG ullAvailPhys;
+    DWORDLONG ullFilledPhys;
+	
+	// Page File
+    DWORD dwPercentPageFile;
+    DWORDLONG ullTotalPageFile;
+    DWORDLONG ullAvailPageFile;
+    DWORDLONG ullFilledPageFile;
+
+	// System Working Set
+    DWORD dwPercentSystemWorkingSet;
+    DWORDLONG ullTotalSystemWorkingSet;
+    DWORDLONG ullAvailSystemWorkingSet;
+    DWORDLONG ullFilledSystemWorkingSet;
+} MEMORY_USAGE, *LPMEMORY_USAGE;
 
 /***********************************************
 *	NTDLL Definition taken from Process Hacker

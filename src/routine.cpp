@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 30/03/13
+// lastmod: 03/04/13
 
 #include "routine.h"
 
@@ -316,6 +316,22 @@ BOOL IsUnderUAC()
 	return FALSE;
 }
 
+// Run with elevated privileges
+BOOL RunElevated(HWND hWnd, LPCTSTR pszPath, LPCTSTR pszParameters)
+{
+	SHELLEXECUTEINFO shex = {0};
+
+    shex.cbSize = sizeof(shex);
+    shex.fMask = 0;
+    shex.hwnd = hWnd;
+    shex.lpVerb = L"runas";
+    shex.lpFile = pszPath;
+    shex.lpParameters = pszParameters;
+    shex.nShow = SW_NORMAL;
+
+    return ShellExecuteEx(&shex);
+}
+
 // Check is File Exists
 BOOL FileExists(LPCTSTR lpcszPath)
 {
@@ -459,6 +475,39 @@ CString ls(HINSTANCE hInstance, UINT uID)
 		buffer.Format(L"%d", uID);
 
 	return buffer;
+}
+
+// Compare Two Versions
+//
+// 0 - versions is equal
+// 1 - second version is larger
+// -1 - primary version is larger
+
+INT VersionCompare(CString version1, CString version2)
+{
+	CString token1, token2;
+	INT pos1 = 0, pos2 = 0;
+	DWORD ver1 = 0, ver2 = 0;
+
+	token1 = version1.Tokenize(L".", pos1);
+	token2 = version2.Tokenize(L".", pos2);
+	
+	while(!token1.IsEmpty())
+	{
+		ver1 = wcstol(token1, NULL, 10);
+		ver2 = wcstol(token2, NULL, 10);
+
+		if(ver1 < ver2)
+			return 1;
+
+		if(ver1 > ver2)
+			return -1;
+
+		token1 = version1.Tokenize(L".", pos1);
+		token2 = version2.Tokenize(L".", pos2);
+	}; 
+
+	return 0;
 }
 
 // Get Clipboard Text
@@ -616,7 +665,7 @@ INT WmMutexWrapper(HWND hwndDlg, WPARAM wParam, LPARAM lParam)
 		else
 		{
 			ShowWindow(hwndDlg, SW_SHOW);
-			SetForegroundWindow(hwndDlg);
+			SetWindowPos(hwndDlg, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE); 
 
 			return 1;
 		}

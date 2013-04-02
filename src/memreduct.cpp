@@ -23,9 +23,9 @@
 
 INI ini;
 CONFIG cfg = {0};
-NOTIFYICONDATA nid = {0};
 CONST INT WM_MUTEX = RegisterWindowMessage(APP_NAME_SHORT);
-PAGES pages = {{IDS_PAGE_1, IDS_PAGE_2, IDS_PAGE_3, IDS_PAGE_4, IDS_PAGE_5}, {IDD_PAGE_1, IDD_PAGE_2, IDD_PAGE_3, IDD_PAGE_4, IDD_PAGE_5}, {0}, 0, {0}};
+TAB_PAGES tab_pages = {{IDS_PAGE_1, IDS_PAGE_2, IDS_PAGE_3, IDS_PAGE_4, IDS_PAGE_5}, {IDD_PAGE_1, IDD_PAGE_2, IDD_PAGE_3, IDD_PAGE_4, IDD_PAGE_5}, {0}, 0, {0}};
+NOTIFYICONDATA nid = {0};
 
 // Check Updates
 UINT WINAPI CheckUpdates(LPVOID lpParam)
@@ -55,16 +55,16 @@ UINT WINAPI CheckUpdates(LPVOID lpParam)
 				// Convert to Unicode
 				CA2W newver(szBufferA, CP_UTF8);
 
-				// If NEWVER == CURVER
-				if(lstrcmpi(newver, APP_VERSION) == 0)
-				{
-					if(!lpParam)
-						MessageBox(cfg.hWnd, MB_OK | MB_ICONINFORMATION, APP_NAME, ls(cfg.hLocale, IDS_UPDATE_NO));
-				}
-				else
+				// If CURVER < NEWVER
+				if(VersionCompare(APP_VERSION, newver.m_psz) == 1)
 				{
 					if(MessageBox(cfg.hWnd, MB_YESNO | MB_ICONQUESTION, APP_NAME, ls(cfg.hLocale, IDS_UPDATE_YES), newver) == IDYES)
 						ShellExecute(cfg.hWnd, 0, APP_WEBSITE L"/?product=" APP_NAME_SHORT, NULL, NULL, SW_SHOWDEFAULT);
+				}
+				else
+				{
+					if(!lpParam)
+						MessageBox(cfg.hWnd, MB_OK | MB_ICONINFORMATION, APP_NAME, ls(cfg.hLocale, IDS_UPDATE_NO));
 				}
 
 				// Good Result
@@ -85,27 +85,6 @@ UINT WINAPI CheckUpdates(LPVOID lpParam)
 
 	return bStatus;
 }
-
-typedef struct _MEMORY_USAGE
-{
-	// Physical
-    DWORD dwPercentPhys;
-    DWORDLONG ullTotalPhys;
-    DWORDLONG ullAvailPhys;
-    DWORDLONG ullFilledPhys;
-	
-	// Page File
-    DWORD dwPercentPageFile;
-    DWORDLONG ullTotalPageFile;
-    DWORDLONG ullAvailPageFile;
-    DWORDLONG ullFilledPageFile;
-
-	// System Working Set
-    DWORD dwPercentSystemWorkingSet;
-    DWORDLONG ullTotalSystemWorkingSet;
-    DWORDLONG ullAvailSystemWorkingSet;
-    DWORDLONG ullFilledSystemWorkingSet;
-} MEMORY_USAGE, *LPMEMORY_USAGE;
 
 // Get Memory Usage
 DWORD GetMemoryUsage(LPMEMORY_USAGE lpmu)
@@ -156,12 +135,12 @@ BOOL ShowBalloonTip(DWORD dwInfoFlags, LPCWSTR lpcszTitle, LPCWSTR lpcszMessage)
 {
 	// Check Interval
 	if(cfg.dwLastBalloon && (GetTickCount() - cfg.dwLastBalloon) < ((UINT)ini.read(APP_NAME_SHORT, L"BalloonInterval", 10)) * 1000)
-		return 0;
+		return FALSE;
 
 	// Configure Structure
 	nid.uFlags = NIF_INFO;
 	nid.dwInfoFlags = NIIF_RESPECT_QUIET_TIME | dwInfoFlags;
-			
+
 	// Set Text
 	StringCchCopy(nid.szInfo, _countof(nid.szInfo), lpcszMessage);
 	StringCchCopy(nid.szInfoTitle, _countof(nid.szInfoTitle), lpcszTitle);
@@ -176,7 +155,7 @@ BOOL ShowBalloonTip(DWORD dwInfoFlags, LPCWSTR lpcszTitle, LPCWSTR lpcszMessage)
 	// Keep Last Show-Time
 	cfg.dwLastBalloon = GetTickCount();
 
-	return 1;
+	return TRUE;
 }
 
 // Create HICON with Memory Info
@@ -226,7 +205,7 @@ HICON CreateMemIcon(DWORD dwData)
 	SetBkMode(hCompatibleDC, TRANSPARENT);
 
 	buffer.Format(L"%d\0", dwData);
-	DrawText(hCompatibleDC, buffer, buffer.GetLength(), &rc, DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP);
+	DrawTextEx(hCompatibleDC, buffer.GetBuffer(), buffer.GetLength(), &rc,  DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP, NULL);
 
 	// Draw Border
 	if(ini.read(APP_NAME_SHORT, L"TrayShowBorder", 0))
@@ -267,8 +246,8 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 	LRESULT lParam = 0;
 	DWORD dwPercents[3] = {0};
 
-	// If NOT Admin Rights
-	if(!cfg.bAdminPrivilege)
+	// If user has no rights
+	if(!cfg.bAdminPrivilege || cfg.bUnderUAC)
 		return 0;
 
 	// Check settings
@@ -327,7 +306,6 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 	{
 		smlc = MemoryFlushModifiedList;
 		NtSetSystemInformation(SystemMemoryListInformation, &smlc, sizeof(smlc));
-
 	}
 
 	// Standby Pagelists
@@ -371,6 +349,12 @@ INT_PTR CALLBACK CleanerDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 	{
 		case WM_INITDIALOG:
 		{
+			if(cfg.bUnderUAC)
+			{
+				MessageBox(hwndDlg, ls(cfg.hLocale, IDS_UAC_WARNING), APP_NAME, MB_OK | MB_ICONERROR);
+				SendMessage(hwndDlg, WM_CLOSE, 0, 0);
+			}
+
 			// Centering By Parent
 			CenterDialog(hwndDlg);
 
@@ -582,7 +566,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		case WM_INITDIALOG:
 		{
 			// Set Position
-			SetWindowPos(hwndDlg, 0, pages.rc.left, pages.rc.top, pages.rc.right - pages.rc.left, pages.rc.bottom - pages.rc.top, 0);
+			SetWindowPos(hwndDlg, 0, tab_pages.rc.left, tab_pages.rc.top, tab_pages.rc.right - tab_pages.rc.left, tab_pages.rc.bottom - tab_pages.rc.top, 0);
 
 			// Activate Tab Texture
 			EnableThemeDialogTexture(hwndDlg, ETDT_USETABTEXTURE);
@@ -888,7 +872,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 			for(int i = 0; i < PAGE_COUNT; i++)
 			{
-				buffer = ls(cfg.hLocale, pages.iTitle[i]);
+				buffer = ls(cfg.hLocale, tab_pages.iTitle[i]);
 				
 				tci.mask = TCIF_TEXT;
 				tci.pszText = buffer.GetBuffer();
@@ -898,21 +882,21 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			}
 
 			// Calculate Tab Rect
-			if(IsRectEmpty(&pages.rc))
+			if(IsRectEmpty(&tab_pages.rc))
 			{
 				RECT rc = {0};
 				GetWindowRect(GetDlgItem(hwndDlg, IDC_TAB), &rc);
 				MapWindowPoints(NULL, hwndDlg, (LPPOINT)&rc, 2);
 
-				GetClientRect(GetDlgItem(hwndDlg, IDC_TAB), &pages.rc);
-				TabCtrl_AdjustRect(GetDlgItem(hwndDlg, IDC_TAB), 0, &pages.rc);
+				GetClientRect(GetDlgItem(hwndDlg, IDC_TAB), &tab_pages.rc);
+				TabCtrl_AdjustRect(GetDlgItem(hwndDlg, IDC_TAB), 0, &tab_pages.rc);
 			
-				pages.rc.top += rc.top + 1;	pages.rc.left += rc.left - 1; pages.rc.right += rc.left - 1; pages.rc.bottom += rc.top - 1;
+				tab_pages.rc.top += rc.top + 1;	tab_pages.rc.left += rc.left - 1; tab_pages.rc.right += rc.left - 1; tab_pages.rc.bottom += rc.top - 1;
 			}
 
 			// Reset Pages Handles
 			for(int i = 0; i < PAGE_COUNT; i++)
-				pages.hWnd[i] = NULL;
+				tab_pages.hWnd[i] = NULL;
 
 			// Set Last Used Tab to Current
 			SendDlgItemMessage(hwndDlg, IDC_TAB, TCM_SETCURSEL, ini.read(APP_NAME_SHORT, L"LastTab", 0), 0);
@@ -949,19 +933,19 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 					if(lpnmhdr->idFrom == IDC_TAB)
 					{
 						iBuffer = SendDlgItemMessage(hwndDlg, lpnmhdr->idFrom, TCM_GETCURSEL, 0, 0);
-						ShowWindow(pages.hCurrent, SW_HIDE);
+						ShowWindow(tab_pages.hCurrent, SW_HIDE);
 
-						if(pages.hWnd[iBuffer])
+						if(tab_pages.hWnd[iBuffer])
 						{
 							// Show Window
-							ShowWindow(pages.hWnd[iBuffer], SW_SHOW);
-							pages.hCurrent = pages.hWnd[iBuffer];
+							ShowWindow(tab_pages.hWnd[iBuffer], SW_SHOW);
+							tab_pages.hCurrent = tab_pages.hWnd[iBuffer];
 						}
 						else
 						{
 							// Create Window
-							pages.hCurrent = CreateDialog(cfg.hLocale, MAKEINTRESOURCE(pages.iDialog[iBuffer]), hwndDlg, PagesDlgProc);
-							pages.hWnd[iBuffer] = pages.hCurrent;
+							tab_pages.hCurrent = CreateDialog(cfg.hLocale, MAKEINTRESOURCE(tab_pages.iDialog[iBuffer]), hwndDlg, PagesDlgProc);
+							tab_pages.hWnd[iBuffer] = tab_pages.hCurrent;
 						}
 					}
 
@@ -980,26 +964,26 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 				case IDC_APPLY:
 				{
 					// GENERAL
-					if(pages.hWnd[0])
+					if(tab_pages.hWnd[0])
 					{
 						// General
-						CreateAutorunEntry(APP_NAME, (IsDlgButtonChecked(pages.hWnd[0], IDC_LOAD_ON_STARTUP_CHK) == BST_CHECKED));
+						CreateAutorunEntry(APP_NAME, (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_LOAD_ON_STARTUP_CHK) == BST_CHECKED));
 
-						ini.write(APP_NAME_SHORT, L"CheckUpdateAtStartup", (IsDlgButtonChecked(pages.hWnd[0], IDC_CHECK_UPDATE_AT_STARTUP_CHK) == BST_CHECKED) ? 1 : 0);
+						ini.write(APP_NAME_SHORT, L"CheckUpdateAtStartup", (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_CHECK_UPDATE_AT_STARTUP_CHK) == BST_CHECKED) ? 1 : 0);
 
-						iBuffer = (IsDlgButtonChecked(pages.hWnd[0], IDC_ALWAYS_ON_TOP_CHK) == BST_CHECKED) ? 1 : 0;
+						iBuffer = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_ALWAYS_ON_TOP_CHK) == BST_CHECKED) ? 1 : 0;
 						ini.write(APP_NAME_SHORT, L"AlwaysOnTop", iBuffer);
 						SetWindowPos(cfg.hWnd, (iBuffer ? HWND_TOPMOST : HWND_NOTOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
 						// Color Indication
-						cfg.bColorIndicationTray = (IsDlgButtonChecked(pages.hWnd[0], IDC_COLOR_INDICATION_TRAY_CHK) == BST_CHECKED);
+						cfg.bColorIndicationTray = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_COLOR_INDICATION_TRAY_CHK) == BST_CHECKED);
 						ini.write(APP_NAME_SHORT, L"ColorIndicationTray", cfg.bColorIndicationTray);
 
-						cfg.bColorIndicationListView = (IsDlgButtonChecked(pages.hWnd[0], IDC_COLOR_INDICATION_LISTVIEW_CHK) == BST_CHECKED);
+						cfg.bColorIndicationListView = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_COLOR_INDICATION_LISTVIEW_CHK) == BST_CHECKED);
 						ini.write(APP_NAME_SHORT, L"ColorIndicationListview", cfg.bColorIndicationListView);
 
 						// Language
-						iBuffer = SendDlgItemMessage(pages.hWnd[0], IDC_LANGUAGE_CB, CB_GETCURSEL, 0, 0);
+						iBuffer = SendDlgItemMessage(tab_pages.hWnd[0], IDC_LANGUAGE_CB, CB_GETCURSEL, 0, 0);
 						
 						if(cfg.hLocale)
 							FreeLibrary(cfg.hLocale);
@@ -1013,7 +997,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						{
 							WCHAR szBuffer[MAX_PATH] = {0};
 
-							GetDlgItemText(pages.hWnd[0], IDC_LANGUAGE_CB, szBuffer, MAX_PATH);
+							GetDlgItemText(tab_pages.hWnd[0], IDC_LANGUAGE_CB, szBuffer, MAX_PATH);
 							ini.write(APP_NAME_SHORT, L"Language", szBuffer);
 
 							buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, szBuffer);
@@ -1021,76 +1005,76 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						}
 
 						// Size Unit
-						iBuffer = (IsDlgButtonChecked(pages.hWnd[0], IDC_SHOW_AS_KILOBYTE_CHK) == BST_CHECKED);
+						iBuffer = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_SHOW_AS_KILOBYTE_CHK) == BST_CHECKED);
 						ini.write(APP_NAME_SHORT, L"ShowAsKilobyte", iBuffer);
 						StringCchCopy(cfg.szUnit, _countof(cfg.szUnit), ls(cfg.hLocale, iBuffer ? IDS_UNIT_KB : IDS_UNIT_MB));
 						cfg.uUnitDivider = iBuffer ? 1024 : 1048576;
 					}
 
 					// MEMORY REDUCTION
-					if(pages.hWnd[1])
+					if(tab_pages.hWnd[1])
 					{
 						// Cleaning Areas
-						ini.write(APP_NAME_SHORT, L"CleanWorkingSet", (IsDlgButtonChecked(pages.hWnd[1], IDC_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
-						ini.write(APP_NAME_SHORT, L"CleanSystemWorkingSet", (IsDlgButtonChecked(pages.hWnd[1], IDC_SYSTEM_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
-						ini.write(APP_NAME_SHORT, L"CleanModifiedPagelist", (IsDlgButtonChecked(pages.hWnd[1], IDC_MODIFIED_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
-						ini.write(APP_NAME_SHORT, L"CleanStandbyPagelist", (IsDlgButtonChecked(pages.hWnd[1], IDC_STANDBY_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
+						ini.write(APP_NAME_SHORT, L"CleanWorkingSet", (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
+						ini.write(APP_NAME_SHORT, L"CleanSystemWorkingSet", (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_SYSTEM_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
+						ini.write(APP_NAME_SHORT, L"CleanModifiedPagelist", (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_MODIFIED_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
+						ini.write(APP_NAME_SHORT, L"CleanStandbyPagelist", (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_STANDBY_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
 
 						// Cleaning Options
-						ini.write(APP_NAME_SHORT, L"AskBeforeCleaning", (IsDlgButtonChecked(pages.hWnd[1], IDC_ASK_BEFORE_CLEANING_CHK) == BST_CHECKED) ? 1 : 0);
+						ini.write(APP_NAME_SHORT, L"AskBeforeCleaning", (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_ASK_BEFORE_CLEANING_CHK) == BST_CHECKED) ? 1 : 0);
 
-						cfg.bAutoReduct = (IsDlgButtonChecked(pages.hWnd[1], IDC_AUTOREDUCT_CHK) == BST_CHECKED) ? 1 : 0;
+						cfg.bAutoReduct = (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_AUTOREDUCT_CHK) == BST_CHECKED) ? 1 : 0;
 						ini.write(APP_NAME_SHORT, L"AutoReduct", cfg.bAutoReduct);
 
-						cfg.uAutoReductPercents = SendDlgItemMessage(pages.hWnd[1], IDC_AUTOREDUCT_TB, TBM_GETPOS, 0, 0);
+						cfg.uAutoReductPercents = SendDlgItemMessage(tab_pages.hWnd[1], IDC_AUTOREDUCT_TB, TBM_GETPOS, 0, 0);
 						ini.write(APP_NAME_SHORT, L"AutoReductPercents", cfg.uAutoReductPercents);
 					}
 					
 					// TRAY
-					if(pages.hWnd[2])
+					if(tab_pages.hWnd[2])
 					{
 						// Refresh Rate
-						iBuffer = SendDlgItemMessage(pages.hWnd[2], IDC_REFRESHRATE, UDM_GETPOS32, 0, 0);
+						iBuffer = SendDlgItemMessage(tab_pages.hWnd[2], IDC_REFRESHRATE, UDM_GETPOS32, 0, 0);
 
 						ini.write(APP_NAME_SHORT, L"RefreshRate", iBuffer);
 						KillTimer(GetParent(hwndDlg), UID);
 						SetTimer(GetParent(hwndDlg), UID, iBuffer, 0);
 						
 						// "Warning" Level
-						cfg.uYellowLevel = SendDlgItemMessage(pages.hWnd[2], IDC_YELLOW_LEVEL, UDM_GETPOS32, 0, 0);
+						cfg.uYellowLevel = SendDlgItemMessage(tab_pages.hWnd[2], IDC_YELLOW_LEVEL, UDM_GETPOS32, 0, 0);
 						ini.write(APP_NAME_SHORT, L"WarningLevel", cfg.uYellowLevel);
 
 						// "Danger" Level
-						cfg.uRedLevel = SendDlgItemMessage(pages.hWnd[2], IDC_RED_LEVEL, UDM_GETPOS32, 0, 0);
+						cfg.uRedLevel = SendDlgItemMessage(tab_pages.hWnd[2], IDC_RED_LEVEL, UDM_GETPOS32, 0, 0);
 						ini.write(APP_NAME_SHORT, L"DangerLevel", cfg.uRedLevel);
 
 						// Tray double-click
-						ini.write(APP_NAME_SHORT, L"OnDoubleClick", SendDlgItemMessage(pages.hWnd[2], IDC_DOUBLECLICK_CB, CB_GETCURSEL, 0, 0));
+						ini.write(APP_NAME_SHORT, L"OnDoubleClick", SendDlgItemMessage(tab_pages.hWnd[2], IDC_DOUBLECLICK_CB, CB_GETCURSEL, 0, 0));
 
 						// Tray displayed memory region
-						ini.write(APP_NAME_SHORT, L"TrayMemoryRegion", SendDlgItemMessage(pages.hWnd[2], IDC_TRAYMEMORYREGION_CB, CB_GETCURSEL, 0, 0));
+						ini.write(APP_NAME_SHORT, L"TrayMemoryRegion", SendDlgItemMessage(tab_pages.hWnd[2], IDC_TRAYMEMORYREGION_CB, CB_GETCURSEL, 0, 0));
 					}
 
 					// APPEARANCE
-					if(pages.hWnd[3])
+					if(tab_pages.hWnd[3])
 					{
-						ini.write(APP_NAME_SHORT, L"TrayShowBorder", (IsDlgButtonChecked(pages.hWnd[3], IDC_TRAY_SHOW_BORDER_CHK) == BST_CHECKED));
-						ini.write(APP_NAME_SHORT, L"TrayChangeBackground", (IsDlgButtonChecked(pages.hWnd[3], IDC_TRAY_CHANGE_BACKGROUND_CHK) == BST_CHECKED));
+						ini.write(APP_NAME_SHORT, L"TrayShowBorder", (IsDlgButtonChecked(tab_pages.hWnd[3], IDC_TRAY_SHOW_BORDER_CHK) == BST_CHECKED));
+						ini.write(APP_NAME_SHORT, L"TrayChangeBackground", (IsDlgButtonChecked(tab_pages.hWnd[3], IDC_TRAY_CHANGE_BACKGROUND_CHK) == BST_CHECKED));
 					}
 
 					// BALLOON
-					if(pages.hWnd[4])
+					if(tab_pages.hWnd[4])
 					{
 						// Balloon's Chk
-						cfg.bBalloonShow = (IsDlgButtonChecked(pages.hWnd[4], IDC_BALLOON_SHOW_CHK) == BST_CHECKED);
+						cfg.bBalloonShow = (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_SHOW_CHK) == BST_CHECKED);
 						ini.write(APP_NAME_SHORT, L"BalloonShow", cfg.bBalloonShow);
 
-						ini.write(APP_NAME_SHORT, L"BalloonAutoReduct", (IsDlgButtonChecked(pages.hWnd[4], IDC_BALLOON_AUTOREDUCT_CHK) == BST_CHECKED));
-						ini.write(APP_NAME_SHORT, L"BalloonWarningLevel", (IsDlgButtonChecked(pages.hWnd[4], IDC_BALLOON_YELLOWLEVEL_CHK) == BST_CHECKED));
-						ini.write(APP_NAME_SHORT, L"BalloonDangerLevel", (IsDlgButtonChecked(pages.hWnd[4], IDC_BALLOON_REDLEVEL_CHK) == BST_CHECKED));
+						ini.write(APP_NAME_SHORT, L"BalloonAutoReduct", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_AUTOREDUCT_CHK) == BST_CHECKED));
+						ini.write(APP_NAME_SHORT, L"BalloonWarningLevel", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_YELLOWLEVEL_CHK) == BST_CHECKED));
+						ini.write(APP_NAME_SHORT, L"BalloonDangerLevel", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_REDLEVEL_CHK) == BST_CHECKED));
 	
 						// Balloon Options
-						ini.write(APP_NAME_SHORT, L"BalloonInterval", SendDlgItemMessage(pages.hWnd[4], IDC_BALLOONINTERVAL, UDM_GETPOS32, 0, 0));
+						ini.write(APP_NAME_SHORT, L"BalloonInterval", SendDlgItemMessage(tab_pages.hWnd[4], IDC_BALLOONINTERVAL, UDM_GETPOS32, 0, 0));
 					}
 
 					if(LOWORD(wParam) == IDC_APPLY)
@@ -1149,7 +1133,12 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			// Check Mutex
 			CreateMutex(NULL, TRUE, APP_NAME_SHORT);
 
-			if(GetLastError() == ERROR_ALREADY_EXISTS)
+			if(wcsstr(GetCommandLine(), L"/restart"))
+			{
+				PostMessage(HWND_BROADCAST, WM_MUTEX, GetCurrentProcessId(), 0);
+				ToggleVisible(hwndDlg);
+			}
+			else if(GetLastError() == ERROR_ALREADY_EXISTS)
 			{
 				PostMessage(HWND_BROADCAST, WM_MUTEX, GetCurrentProcessId(), 1);
 				SendMessage(hwndDlg, WM_CLOSE, 0, 0);
@@ -1158,7 +1147,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 
 			// Set Window Title
-			SetWindowText(hwndDlg, APP_NAME L" " APP_VERSION);
+			SetWindowText(hwndDlg, APP_NAME L" " APP_VERSION L" / TEST - DO NOT USE");
 
 			// Set Icons
 			SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_MAIN), IMAGE_ICON, 32, 32, 0));
@@ -1179,7 +1168,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 			cfg.bSupportedOS = ValidWindowsVersion(6, 0); // if vista (6.0) and later
 			cfg.bAdminPrivilege = IsAdmin(); // if user has admin rights
-			cfg.bUnderUAC = IsUnderUAC();
+			cfg.bUnderUAC = IsUnderUAC(); // if running under UAC
 
 			cfg.bColorIndicationTray = ini.read(APP_NAME_SHORT, L"ColorIndicationTray", 1);
 			cfg.bColorIndicationListView = ini.read(APP_NAME_SHORT, L"ColorIndicationListView", 1);
@@ -1567,6 +1556,18 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				case IDM_TRAY_REDUCT:
 				case IDC_REDUCT:
 				{
+					if(cfg.bUnderUAC)
+					{
+						GetModuleFileName(NULL, buffer.GetBuffer(MAX_PATH), MAX_PATH);
+						buffer.ReleaseBuffer();
+
+						if(RunElevated(hwndDlg, buffer, L"/restart"))
+						{
+							PostMessage(hwndDlg, WM_CLOSE, 0, 0);
+							return 0;
+						}
+					}
+
 					if(!cfg.bReductDlg)
 					{
 						cfg.bReductDlg = 1;
@@ -1627,15 +1628,17 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	MSG msg = {0};
 	INITCOMMONCONTROLSEX icex = {0};
 
-	// Load Settings
+	// Set current dir
 	GetModuleFileName(NULL, buffer.GetBuffer(MAX_PATH), MAX_PATH);
 	buffer.ReleaseBuffer();
 
-	PathRenameExtension(buffer.GetBuffer(MAX_PATH), L".cfg");
+	PathRemoveFileSpec(buffer.GetBuffer(MAX_PATH));
 	buffer.ReleaseBuffer();
 
-	// Save to APPDATA path
-	if(!FileExists(buffer))
+	cfg.szCurrentDir = buffer;
+
+	// Generate config path
+	if(!FileExists((buffer = cfg.szCurrentDir + L"\\" APP_NAME_SHORT + L".cfg")))
 	{
 		ExpandEnvironmentStrings(L"%APPDATA%\\" APP_AUTHOR L"\\" APP_NAME, buffer.GetBuffer(MAX_PATH), MAX_PATH);
 		buffer.ReleaseBuffer();
@@ -1644,19 +1647,19 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		buffer.Append(+ L"\\" APP_NAME_SHORT L".cfg");
 	}
 
+	//MessageBox(0,0,0,L"%d", RunElevated(0, L"11.exe"));
+	//return 1;
+
+	// Set config path
 	ini.set_path(buffer);
 
-	// Current Dir
-	PathRemoveFileSpec(buffer.GetBuffer(MAX_PATH));
-	StringCchCopy(cfg.szCurrentDir, MAX_PATH, buffer);
-
-	// Language
+	// Load language
 	buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, ini.read(APP_NAME_SHORT, L"Language", MAX_PATH, 0));
 
 	if(FileExists(buffer))
 		cfg.hLocale = LoadLibraryEx(buffer, 0, LOAD_LIBRARY_AS_DATAFILE);
 
-	// Initialize and Create Window
+	// Initialize and create window
 	icex.dwSize = sizeof(icex);
 	icex.dwICC = ICC_WIN95_CLASSES | ICC_STANDARD_CLASSES;
 

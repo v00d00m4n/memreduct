@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 03/04/13
+// lastmod: 04/04/13
 
 #ifndef __ROUTINE_H__
 #define __ROUTINE_H__
@@ -50,12 +50,14 @@ CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend = 0, CONST WCHAR cSep
 
 VOID SetAlwaysOnTop(HWND hWnd, BOOL bEnable);
 VOID CenterDialog(HWND hWnd);
-VOID ToggleVisible(HWND hWnd);
+VOID ToggleVisible(HWND hWnd, BOOL bForceShow = FALSE);
 
 VOID CreateAutorunEntry(LPCWSTR lpszName, BOOL bRemove);
 BOOL IsAutorunExists(LPCWSTR lpszName);
 
 CString ls(HINSTANCE hInstance, UINT uID);
+CString GetFileVersion(LPCTSTR pszPath);
+HINSTANCE LoadLanguage(LPCTSTR pszPath, LPCTSTR pszVersion = NULL);
 INT VersionCompare(CString version1, CString version2);
 
 CString ClipboardGet();

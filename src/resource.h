@@ -52,8 +52,8 @@
 
 // Page #3 Dlg									
 #define IDC_REFRESHRATE							116
-#define IDC_YELLOW_LEVEL						117
-#define IDC_RED_LEVEL							118
+#define IDC_WARNING_LEVEL						117
+#define IDC_DANGER_LEVEL						118
 #define IDC_DOUBLECLICK_CB						119
 #define IDC_TRAYMEMORYREGION_CB					120
 
@@ -65,8 +65,8 @@
 // Page #5 Dlg
 #define IDC_BALLOON_SHOW_CHK					124
 #define IDC_BALLOON_AUTOREDUCT_CHK				125
-#define IDC_BALLOON_YELLOWLEVEL_CHK				126
-#define IDC_BALLOON_REDLEVEL_CHK				127
+#define IDC_BALLOON_WARNING_CHK					126
+#define IDC_BALLOON_DANGER_CHK					127
 #define IDC_BALLOONINTERVAL						128
 
 // Common Controls

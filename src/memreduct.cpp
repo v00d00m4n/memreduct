@@ -248,7 +248,10 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 
 	// If user has no rights
 	if(!cfg.bAdminPrivilege || cfg.bUnderUAC)
+	{
+		MessageBox(cfg.hWnd, ls(cfg.hLocale, IDS_UAC_WARNING), APP_NAME, MB_OK | MB_ICONERROR);
 		return 0;
+	}
 
 	// Check settings
 	if(!ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) && !ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0))
@@ -596,6 +599,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					WIN32_FIND_DATA wfd = {0};
 					buffer.Format(L"%s\\Languages\\*.dll", cfg.szCurrentDir);
 					HANDLE hFind = FindFirstFile(buffer, &wfd);
+					HINSTANCE hLanguage= NULL;
 
 					if(hFind != INVALID_HANDLE_VALUE)
 					{
@@ -603,16 +607,22 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 							if(!(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 							{
 								PathRemoveExtension(wfd.cFileName);
-								SendDlgItemMessage(hwndDlg, IDC_LANGUAGE_CB, CB_ADDSTRING, 0, (LPARAM)wfd.cFileName);
+
+								buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, wfd.cFileName);
+
+								if((hLanguage = LoadLanguage(buffer, APP_VERSION)))
+								{
+									SendDlgItemMessage(hwndDlg, IDC_LANGUAGE_CB, CB_ADDSTRING, 0, (LPARAM)wfd.cFileName);
+									FreeLibrary(hLanguage);
+								}
 							}
 						} while(FindNextFile(hFind, &wfd));
 
 						FindClose(hFind);
 					}
-					else
-					{
+
+					if(SendDlgItemMessage(hwndDlg, IDC_LANGUAGE_CB, CB_GETCOUNT, 0, 0) <= 1)
 						EnableWindow(GetDlgItem(hwndDlg, IDC_LANGUAGE_CB), 0);
-					}
 
 					if(SendDlgItemMessage(hwndDlg, IDC_LANGUAGE_CB, CB_SELECTSTRING, 1, (LPARAM)ini.read(APP_NAME_SHORT, L"Language", MAX_PATH, 0).GetBuffer()) == CB_ERR)
 						SendDlgItemMessage(hwndDlg, IDC_LANGUAGE_CB, CB_SETCURSEL, 0, 0);
@@ -665,12 +675,12 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					SendDlgItemMessage(hwndDlg, IDC_REFRESHRATE, UDM_SETPOS32, 0, ini.read(APP_NAME_SHORT, L"RefreshRate", 500));
 
 					// Configure Up-Down #2
-					SendDlgItemMessage(hwndDlg, IDC_YELLOW_LEVEL, UDM_SETRANGE32, 1, 99);
-					SendDlgItemMessage(hwndDlg, IDC_YELLOW_LEVEL, UDM_SETPOS32, 0, ini.read(APP_NAME_SHORT, L"WarningLevel", 60));
+					SendDlgItemMessage(hwndDlg, IDC_WARNING_LEVEL, UDM_SETRANGE32, 1, 99);
+					SendDlgItemMessage(hwndDlg, IDC_WARNING_LEVEL, UDM_SETPOS32, 0, ini.read(APP_NAME_SHORT, L"WarningLevel", 60));
 
 					// Configure Up-Down #3
-					SendDlgItemMessage(hwndDlg, IDC_RED_LEVEL, UDM_SETRANGE32, 1, 99);
-					SendDlgItemMessage(hwndDlg, IDC_RED_LEVEL, UDM_SETPOS32, 0, ini.read(APP_NAME_SHORT, L"DangerLevel", 90));
+					SendDlgItemMessage(hwndDlg, IDC_DANGER_LEVEL, UDM_SETRANGE32, 1, 99);
+					SendDlgItemMessage(hwndDlg, IDC_DANGER_LEVEL, UDM_SETPOS32, 0, ini.read(APP_NAME_SHORT, L"DangerLevel", 90));
 					
 					// Tray double-click
 					for(int i = IDS_DOUBLECLICK_1; i < (IDS_DOUBLECLICK_4 + 1); i++)
@@ -708,8 +718,8 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					CheckDlgButton(hwndDlg, IDC_BALLOON_SHOW_CHK, ini.read(APP_NAME_SHORT, L"BalloonShow", 1) ? BST_CHECKED : BST_UNCHECKED);
 
 					CheckDlgButton(hwndDlg, IDC_BALLOON_AUTOREDUCT_CHK, ini.read(APP_NAME_SHORT, L"BalloonAutoReduct", 1) ? BST_CHECKED : BST_UNCHECKED);
-					CheckDlgButton(hwndDlg, IDC_BALLOON_YELLOWLEVEL_CHK, ini.read(APP_NAME_SHORT, L"BalloonWarningLevel", 0) ? BST_CHECKED : BST_UNCHECKED);
-					CheckDlgButton(hwndDlg, IDC_BALLOON_REDLEVEL_CHK, ini.read(APP_NAME_SHORT, L"BalloonDangerLevel", 1) ? BST_CHECKED : BST_UNCHECKED);
+					CheckDlgButton(hwndDlg, IDC_BALLOON_WARNING_CHK, ini.read(APP_NAME_SHORT, L"BalloonWarningLevel", 0) ? BST_CHECKED : BST_UNCHECKED);
+					CheckDlgButton(hwndDlg, IDC_BALLOON_DANGER_CHK, ini.read(APP_NAME_SHORT, L"BalloonDangerLevel", 1) ? BST_CHECKED : BST_UNCHECKED);
 
 					// Options
 					SendDlgItemMessage(hwndDlg, IDC_BALLOONINTERVAL, UDM_SETRANGE32, 5, 1000);
@@ -797,7 +807,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					GetDlgItemText(hwndDlg, IDC_LANGUAGE_CB, szBuffer, MAX_PATH);
 					buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, szBuffer);
 
-					hModule = LoadLibraryEx(buffer, 0, LOAD_LIBRARY_AS_DATAFILE);
+					hModule = LoadLanguage(buffer);
 				}
 
 				SetDlgItemText(hwndDlg, IDC_LANGUAGE_INFO, (iBuffer && !hModule) ? L"unknown" : ls(hModule, IDS_TRANSLATION_INFO));
@@ -839,8 +849,8 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					iBuffer = (IsDlgButtonChecked(hwndDlg, IDC_BALLOON_SHOW_CHK) == BST_CHECKED);
 
 					EnableWindow(GetDlgItem(hwndDlg, IDC_BALLOON_AUTOREDUCT_CHK), iBuffer);
-					EnableWindow(GetDlgItem(hwndDlg, IDC_BALLOON_YELLOWLEVEL_CHK), iBuffer);
-					EnableWindow(GetDlgItem(hwndDlg, IDC_BALLOON_REDLEVEL_CHK), iBuffer);
+					EnableWindow(GetDlgItem(hwndDlg, IDC_BALLOON_WARNING_CHK), iBuffer);
+					EnableWindow(GetDlgItem(hwndDlg, IDC_BALLOON_DANGER_CHK), iBuffer);
 					EnableWindow(GetDlgItem(hwndDlg, IDC_BALLOONINTERVAL), iBuffer);
 					EnableWindow((HWND)SendDlgItemMessage(hwndDlg, IDC_BALLOONINTERVAL, UDM_GETBUDDY, 0, 0), iBuffer);
 
@@ -1001,7 +1011,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 							ini.write(APP_NAME_SHORT, L"Language", szBuffer);
 
 							buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, szBuffer);
-							cfg.hLocale = LoadLibraryEx(buffer, 0, LOAD_LIBRARY_AS_DATAFILE);
+							cfg.hLocale = LoadLanguage(buffer);
 						}
 
 						// Size Unit
@@ -1041,11 +1051,11 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						SetTimer(GetParent(hwndDlg), UID, iBuffer, 0);
 						
 						// "Warning" Level
-						cfg.uYellowLevel = SendDlgItemMessage(tab_pages.hWnd[2], IDC_YELLOW_LEVEL, UDM_GETPOS32, 0, 0);
+						cfg.uYellowLevel = SendDlgItemMessage(tab_pages.hWnd[2], IDC_WARNING_LEVEL, UDM_GETPOS32, 0, 0);
 						ini.write(APP_NAME_SHORT, L"WarningLevel", cfg.uYellowLevel);
 
 						// "Danger" Level
-						cfg.uRedLevel = SendDlgItemMessage(tab_pages.hWnd[2], IDC_RED_LEVEL, UDM_GETPOS32, 0, 0);
+						cfg.uRedLevel = SendDlgItemMessage(tab_pages.hWnd[2], IDC_DANGER_LEVEL, UDM_GETPOS32, 0, 0);
 						ini.write(APP_NAME_SHORT, L"DangerLevel", cfg.uRedLevel);
 
 						// Tray double-click
@@ -1070,8 +1080,8 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						ini.write(APP_NAME_SHORT, L"BalloonShow", cfg.bBalloonShow);
 
 						ini.write(APP_NAME_SHORT, L"BalloonAutoReduct", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_AUTOREDUCT_CHK) == BST_CHECKED));
-						ini.write(APP_NAME_SHORT, L"BalloonWarningLevel", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_YELLOWLEVEL_CHK) == BST_CHECKED));
-						ini.write(APP_NAME_SHORT, L"BalloonDangerLevel", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_REDLEVEL_CHK) == BST_CHECKED));
+						ini.write(APP_NAME_SHORT, L"BalloonWarningLevel", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_WARNING_CHK) == BST_CHECKED));
+						ini.write(APP_NAME_SHORT, L"BalloonDangerLevel", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_DANGER_CHK) == BST_CHECKED));
 	
 						// Balloon Options
 						ini.write(APP_NAME_SHORT, L"BalloonInterval", SendDlgItemMessage(tab_pages.hWnd[4], IDC_BALLOONINTERVAL, UDM_GETPOS32, 0, 0));
@@ -1101,22 +1111,6 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 	return 0;
 }
 
-BOOL EnablePrivileges()
-{
-	HANDLE hToken = NULL;
-
-	if(OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
-	{
-		SetPrivilege(hToken, SE_INCREASE_QUOTA_NAME, TRUE);
-		SetPrivilege(hToken, SE_PROF_SINGLE_PROCESS_NAME, TRUE);
-	}
-
-	if(hToken)
-		CloseHandle(hToken);
-
-	return 1;
-}
-
 LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	CString buffer;
@@ -1136,7 +1130,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if(wcsstr(GetCommandLine(), L"/restart"))
 			{
 				PostMessage(HWND_BROADCAST, WM_MUTEX, GetCurrentProcessId(), 0);
-				ToggleVisible(hwndDlg);
+				ToggleVisible(hwndDlg, TRUE);
 			}
 			else if(GetLastError() == ERROR_ALREADY_EXISTS)
 			{
@@ -1192,7 +1186,18 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 			// Enable Privileges
 			if(cfg.bAdminPrivilege)
-				EnablePrivileges();
+			{
+				HANDLE hToken = NULL;
+
+				if(OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+				{
+					SetPrivilege(hToken, SE_INCREASE_QUOTA_NAME, TRUE);
+					SetPrivilege(hToken, SE_PROF_SINGLE_PROCESS_NAME, TRUE);
+				}
+
+				if(hToken)
+					CloseHandle(hToken);
+			}
 
 			// Configure Listview
 			Lv_SetStyleEx(hwndDlg, IDC_INFO, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE, TRUE);
@@ -1647,9 +1652,6 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		buffer.Append(+ L"\\" APP_NAME_SHORT L".cfg");
 	}
 
-	//MessageBox(0,0,0,L"%d", RunElevated(0, L"11.exe"));
-	//return 1;
-
 	// Set config path
 	ini.set_path(buffer);
 
@@ -1657,7 +1659,7 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, ini.read(APP_NAME_SHORT, L"Language", MAX_PATH, 0));
 
 	if(FileExists(buffer))
-		cfg.hLocale = LoadLibraryEx(buffer, 0, LOAD_LIBRARY_AS_DATAFILE);
+		cfg.hLocale = LoadLanguage(buffer, APP_VERSION);
 
 	// Initialize and create window
 	icex.dwSize = sizeof(icex);

@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 03/04/13
+// lastmod: 04/04/13
 
 #include "routine.h"
 
@@ -411,16 +411,16 @@ VOID CenterDialog(HWND hWnd)
 }
 
 // Toggle Visiblity for Window
-VOID ToggleVisible(HWND hWnd)
+VOID ToggleVisible(HWND hWnd, BOOL bForceShow)
 {
-	if(IsWindowVisible(hWnd))
-	{
-		ShowWindow(hWnd, SW_HIDE);
-	}
-	else
+	if(!IsWindowVisible(hWnd) || bForceShow)
 	{
 		ShowWindow(hWnd, SW_SHOWNORMAL);
 		SetForegroundWindow(hWnd);
+	}
+	else
+	{
+		ShowWindow(hWnd, SW_HIDE);
 	}
 }
 
@@ -475,6 +475,48 @@ CString ls(HINSTANCE hInstance, UINT uID)
 		buffer.Format(L"%d", uID);
 
 	return buffer;
+}
+
+// Get language module HINSTANCE
+HINSTANCE LoadLanguage(LPCTSTR pszPath, LPCTSTR pszVersion)
+{
+	if(pszVersion && VersionCompare(pszVersion, GetFileVersion(pszPath)))
+		return NULL;
+
+	return LoadLibraryEx(pszPath, 0, LOAD_LIBRARY_AS_DATAFILE);
+}
+
+// Get EXE/DLL version string
+CString GetFileVersion(LPCTSTR pszPath)
+{
+	CString result;
+
+	DWORD dwHandle = 0, dwSize = GetFileVersionInfoSize(pszPath, &dwHandle);
+	UINT uLen = 0;
+	LPBYTE lpBuffer = NULL;
+
+	if(dwSize)
+	{
+		char* szBlock = new char[dwSize];
+
+		if(GetFileVersionInfo(pszPath, dwHandle, dwSize, szBlock))
+		{
+			if(VerQueryValue(szBlock, L"\\", (VOID FAR* FAR*)&lpBuffer, &uLen))
+			{
+				if(uLen)
+				{
+					VS_FIXEDFILEINFO* ffi = (VS_FIXEDFILEINFO*)lpBuffer;
+
+					if(ffi->dwSignature == 0xFEEF04BD)
+						result.Format(L"%d.%d.%d", HIWORD(ffi->dwFileVersionMS), LOWORD(ffi->dwFileVersionMS), ffi->dwFileVersionLS);
+				}
+			}
+		}
+
+		delete[] szBlock;
+	}
+
+	return result;
 }
 
 // Compare Two Versions
@@ -655,23 +697,22 @@ HWND SetDlgItemTooltip(HWND hWnd, INT iDlgItem, LPWSTR lpszText)
 // WM_MUTEX Wrapper
 INT WmMutexWrapper(HWND hwndDlg, WPARAM wParam, LPARAM lParam)
 {
-	if(wParam && (GetCurrentProcessId() != wParam))
-	{
-		if(!lParam)
-		{
-			SendMessage(hwndDlg, WM_CLOSE, 0, 0);
-			return 1;
-		}
-		else
-		{
-			ShowWindow(hwndDlg, SW_SHOW);
-			SetWindowPos(hwndDlg, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE); 
+	if(GetCurrentProcessId() == wParam)
+		return 0;
 
-			return 1;
-		}
+	if(!lParam)
+	{
+		SendMessage(hwndDlg, WM_CLOSE, 0, 0);
+	}
+	else
+	{
+		ShowWindow(hwndDlg, SW_SHOW);
+
+		SetWindowPos(hwndDlg, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+		SetActiveWindow(hwndDlg);
 	}
 
-	return 0;
+	return 1;
 }
 
 // About Dialog Callback

@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 04/04/13
+// lastmod: 05/04/13
 
 #include "routine.h"
 
@@ -676,7 +676,7 @@ INT MessageBox(HWND hWnd, UINT uType, LPCWSTR lpcszCaption, LPCWSTR lpcszFormat,
 }
 
 // Create Tooltip and set to Control
-HWND SetDlgItemTooltip(HWND hWnd, INT iDlgItem, LPWSTR lpszText)
+HWND SetDlgItemTooltip(HWND hWnd, INT iDlgItem, CString lpszText)
 {
 	// Create Tooltips
 	HWND hTip = CreateWindowEx(NULL, TOOLTIPS_CLASS, NULL, WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, hWnd, NULL, GetModuleHandle(0), NULL);
@@ -686,7 +686,7 @@ HWND SetDlgItemTooltip(HWND hWnd, INT iDlgItem, LPWSTR lpszText)
 	ti.cbSize = sizeof(ti);
 	ti.hwnd = hWnd;
 	ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
-	ti.lpszText = lpszText;
+	ti.lpszText = lpszText.GetBuffer();
 	ti.uId = (UINT_PTR)GetDlgItem(hWnd, iDlgItem);
 
 	SendMessage(hTip, TTM_ADDTOOL, 0, (LPARAM)&ti);
@@ -722,11 +722,11 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 	{
 		case WM_CREATE:
 		{
-			// Disable Parent
+			// Disable parent
 			if(GetParent(hwndDlg))
 				EnableWindow(GetParent(hwndDlg), FALSE);
 
-			// Centering By Parent
+			// Centering by parent
 			CenterDialog(hwndDlg);
 
 			break;
@@ -735,12 +735,12 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		case WM_ENTERSIZEMOVE:
 		case WM_EXITSIZEMOVE:
 		{
-			LONG lExStyle = GetWindowLong(hwndDlg, GWL_EXSTYLE);
+			LONG dwExStyle = GetWindowLongPtr(hwndDlg, GWL_EXSTYLE);
 
-			if(!(lExStyle & WS_EX_LAYERED))
-				SetWindowLong(hwndDlg, GWL_EXSTYLE, lExStyle | WS_EX_LAYERED);
+			if(!(dwExStyle & WS_EX_LAYERED))
+				SetWindowLongPtr(hwndDlg, GWL_EXSTYLE, dwExStyle | WS_EX_LAYERED);
 
-			SetLayeredWindowAttributes(hwndDlg, 0, 100, uMsg == WM_ENTERSIZEMOVE ? LWA_ALPHA : 0);
+			SetLayeredWindowAttributes(hwndDlg, 0, uMsg == WM_ENTERSIZEMOVE ? 100 : 255, LWA_ALPHA);
 			SetCursor(LoadCursor(0, uMsg == WM_ENTERSIZEMOVE ? IDC_SIZEALL : IDC_ARROW));
 
 			break;
@@ -755,7 +755,7 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 		case WM_DESTROY:
 		{
-			// Restore Parent
+			// Restore parent
 			if(GetParent(hwndDlg))
 			{
 				EnableWindow(GetParent(hwndDlg), TRUE);
@@ -782,7 +782,7 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 			ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
 			SetBkColor(hDC, clrOld);
 
-			// Draw Line
+			// Draw line
 			for(int i = 0; i < rc.right; i++)
 				SetPixel(hDC, i, rc.top, GetSysColor(COLOR_BTNSHADOW));
 
@@ -840,11 +840,11 @@ INT AboutBoxCreate(HWND hParent, LPWSTR lpszIcon, LPCWSTR lpcszTitle, LPCWSTR lp
 	WNDCLASSEX wcex = {0};
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 
-	// Check for Duplicate
+	// Check for duplicate
 	if(FindWindowEx(NULL, NULL, L"AboutBox", NULL))
 		return 1;
 
-	// Register Class
+	// Register class
 	if(!GetClassInfoEx(hInstance, L"AboutBox", &wcex))
 	{
 		wcex.cbSize = sizeof(wcex);
@@ -888,7 +888,7 @@ INT AboutBoxCreate(HWND hParent, LPWSTR lpszIcon, LPCWSTR lpcszTitle, LPCWSTR lp
 
 	hWnd = CreateWindowEx(0, WC_BUTTON, L"OK", WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 270, GetWindowDimension(hDlg, HEIGHT, TRUE) - 33, 70, 23, hDlg, 0, hInstance, 0);
 	SendMessage(hWnd, WM_SETFONT, (WPARAM)hFont, 0);
-	SetWindowLong(hWnd, GWL_ID, 100);
+	SetWindowLongPtr(hWnd, GWL_ID, 100);
 
 	while(GetMessage(&msg, 0, 0, 0))
 	{

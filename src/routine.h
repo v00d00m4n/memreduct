@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 04/04/13
+// lastmod: 05/04/13
 
 #ifndef __ROUTINE_H__
 #define __ROUTINE_H__
@@ -70,7 +70,7 @@ time_t SystemTimeToUnixTime(SYSTEMTIME* pst);
 
 INT GetWindowDimension(HWND hWnd, INT iVector, BOOL bClientOnly);
 INT MessageBox(HWND hWnd, UINT uType, LPCWSTR lpcszCaption, LPCWSTR lpcszFormat, ...);
-HWND SetDlgItemTooltip(HWND hWnd, INT iCtrlId, LPWSTR lpszText);
+HWND SetDlgItemTooltip(HWND hWnd, INT iCtrlId, CString lpszText);
 INT WmMutexWrapper(HWND hwndDlg, WPARAM wParam, LPARAM lParam);
 
 LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);

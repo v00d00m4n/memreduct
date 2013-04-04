@@ -56,18 +56,19 @@
 #define IDC_DANGER_LEVEL						118
 #define IDC_DOUBLECLICK_CB						119
 #define IDC_TRAYMEMORYREGION_CB					120
+#define IDC_TRAYSHOWFREE_CHK					121
 
 // Page #4 Dlg
-#define IDC_TRAY_SHOW_BORDER_CHK				121
-#define IDC_TRAY_CHANGE_BACKGROUND_CHK			122
-#define IDC_TRAY_FONT_BTN						123
+#define IDC_TRAY_SHOW_BORDER_CHK				122
+#define IDC_TRAY_CHANGE_BACKGROUND_CHK			123
+#define IDC_TRAY_FONT_BTN						124
 
 // Page #5 Dlg
-#define IDC_BALLOON_SHOW_CHK					124
-#define IDC_BALLOON_AUTOREDUCT_CHK				125
-#define IDC_BALLOON_WARNING_CHK					126
-#define IDC_BALLOON_DANGER_CHK					127
-#define IDC_BALLOONINTERVAL						128
+#define IDC_BALLOON_SHOW_CHK					125
+#define IDC_BALLOON_AUTOREDUCT_CHK				126
+#define IDC_BALLOON_WARNING_CHK					127
+#define IDC_BALLOON_DANGER_CHK					128
+#define IDC_BALLOONINTERVAL						129
 
 // Common Controls
 #define IDC_OK									1000
@@ -108,7 +109,7 @@
 #define IDS_MEM_PAGEFILE						10006
 #define IDS_MEM_SYSCACHE						10007
 
-#define IDS_MEM_USAGE							10008
+#define IDS_MEM_USED							10008
 #define IDS_MEM_FILL							10009
 #define IDS_MEM_TOTAL							10010
 
@@ -141,6 +142,7 @@
 #define IDS_DOUBLECLICK_4						10031
 
 #define IDS_UAC_WARNING							10032
+#define IDS_TRAY_SHOW_FREE						10033
 
 // Icons
 #define IDI_MAIN	                            100

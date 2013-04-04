@@ -27,7 +27,7 @@ CONST INT WM_MUTEX = RegisterWindowMessage(APP_NAME_SHORT);
 TAB_PAGES tab_pages = {{IDS_PAGE_1, IDS_PAGE_2, IDS_PAGE_3, IDS_PAGE_4, IDS_PAGE_5}, {IDD_PAGE_1, IDD_PAGE_2, IDD_PAGE_3, IDD_PAGE_4, IDD_PAGE_5}, {0}, 0, {0}};
 NOTIFYICONDATA nid = {0};
 
-// Check Updates
+// Check for updates
 UINT WINAPI CheckUpdates(LPVOID lpParam)
 {
 	BOOL bStatus = FALSE;
@@ -86,7 +86,7 @@ UINT WINAPI CheckUpdates(LPVOID lpParam)
 	return bStatus;
 }
 
-// Get Memory Usage
+// Get memory usage
 DWORD GetMemoryUsage(LPMEMORY_USAGE lpmu)
 {
 	MEMORYSTATUSEX msex = {0};
@@ -110,14 +110,14 @@ DWORD GetMemoryUsage(LPMEMORY_USAGE lpmu)
 	SYSTEM_CACHE_INFORMATION sci = {0};
 	if(NT_SUCCESS(NtQuerySystemInformation(SystemFileCacheInformation, &sci, sizeof(sci), 0)))
 	{
-		// System Working Set
+		// System working set
 		lpmu->dwPercentSystemWorkingSet = sci.CurrentSize / (sci.PeakSize / 100);
 	
 		lpmu->ullFilledSystemWorkingSet = sci.CurrentSize / cfg.uUnitDivider;
 		lpmu->ullTotalSystemWorkingSet = sci.PeakSize / cfg.uUnitDivider;
 	}
 
-	// Return Percents
+	// Return percents
 	switch(ini.read(APP_NAME_SHORT, L"TrayMemoryRegion", 0))
 	{
 		case 1:
@@ -130,41 +130,42 @@ DWORD GetMemoryUsage(LPMEMORY_USAGE lpmu)
 	return lpmu->dwPercentPhys;
 }
 
-// Show Balloon Tip
+// Show tray balloon tip
 BOOL ShowBalloonTip(DWORD dwInfoFlags, LPCWSTR lpcszTitle, LPCWSTR lpcszMessage)
 {
-	// Check Interval
+	// Check interval
 	if(cfg.dwLastBalloon && (GetTickCount() - cfg.dwLastBalloon) < ((UINT)ini.read(APP_NAME_SHORT, L"BalloonInterval", 10)) * 1000)
 		return FALSE;
 
-	// Configure Structure
+	// Configure structure
 	nid.uFlags = NIF_INFO;
 	nid.dwInfoFlags = NIIF_RESPECT_QUIET_TIME | dwInfoFlags;
 
-	// Set Text
+	// Set text
 	StringCchCopy(nid.szInfo, _countof(nid.szInfo), lpcszMessage);
 	StringCchCopy(nid.szInfoTitle, _countof(nid.szInfoTitle), lpcszTitle);
 
-	// Show Balloon
+	// Show balloon
 	Shell_NotifyIcon(NIM_MODIFY, &nid);
 
 	// Clear for Prevent reshow
 	nid.szInfo[0] = 0;
 	nid.szInfoTitle[0] = 0;
 
-	// Keep Last Show-Time
+	// Keep last show-time
 	cfg.dwLastBalloon = GetTickCount();
 
 	return TRUE;
 }
 
-// Create HICON with Memory Info
+// Create HICON with memory usage info
 HICON CreateMemIcon(DWORD dwData)
 {
 	CString buffer;
 	RECT rc = {0, 0, 16, 16}; // icon rect
 
 	BOOL TrayChangeBackground = ini.read(APP_NAME_SHORT, L"TrayChangeBackground", 1);
+	BOOL TrayShowFree = ini.read(APP_NAME_SHORT, L"TrayShowFree", 0);
 
 	// Initialize Color
 	COLORREF clrTextColor = ini.read(APP_NAME_SHORT, L"TrayTextClr", COLOR_TRAY_TEXT);
@@ -204,7 +205,7 @@ HICON CreateMemIcon(DWORD dwData)
 	SetTextColor(hCompatibleDC, !TrayChangeBackground && clrIndicator ? clrIndicator : clrTextColor);
 	SetBkMode(hCompatibleDC, TRANSPARENT);
 
-	buffer.Format(L"%d\0", dwData);
+	buffer.Format(L"%d\0", TrayShowFree ? 100 - dwData : dwData);
 	DrawTextEx(hCompatibleDC, buffer.GetBuffer(), buffer.GetLength(), &rc,  DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP, NULL);
 
 	// Draw Border
@@ -247,9 +248,11 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 	DWORD dwPercents[3] = {0};
 
 	// If user has no rights
-	if(!cfg.bAdminPrivilege || cfg.bUnderUAC)
+	if(!cfg.bAdminPrivilege)
 	{
-		MessageBox(cfg.hWnd, ls(cfg.hLocale, IDS_UAC_WARNING), APP_NAME, MB_OK | MB_ICONERROR);
+		if(cfg.bUnderUAC)
+			ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_UAC_WARNING));
+
 		return 0;
 	}
 
@@ -455,13 +458,13 @@ INT_PTR CALLBACK CleanerDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 				case NM_CUSTOMDRAW:
 				{
 					LPNMLVCUSTOMDRAW lplvcd = (LPNMLVCUSTOMDRAW)lParam;
-					LONG lResult = CDRF_DODEFAULT;
+					LONG dwResult = CDRF_DODEFAULT;
 
 					switch(lplvcd->nmcd.dwDrawStage)
 					{
 						case CDDS_PREPAINT:
 						{
-							lResult = CDRF_NOTIFYITEMDRAW;
+							dwResult = CDRF_NOTIFYITEMDRAW;
 							break;
 						}
 
@@ -470,10 +473,10 @@ INT_PTR CALLBACK CleanerDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 							if(!lplvcd->nmcd.dwItemSpec)
 							{
 								SelectObject(lplvcd->nmcd.hdc, cfg.hBold);
-								lResult = CDRF_NEWFONT;
+								dwResult = CDRF_NEWFONT;
 							}
 
-							lResult |= CDRF_NOTIFYSUBITEMDRAW;
+							dwResult |= CDRF_NOTIFYSUBITEMDRAW;
 
 							break;
 						}
@@ -494,14 +497,14 @@ INT_PTR CALLBACK CleanerDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 										lplvcd->clrText = LOWORD(lplvcd->nmcd.lItemlParam) > HIWORD(lplvcd->nmcd.lItemlParam) ? COLOR_GREEN : COLOR_RED;
 								}
 
-								lResult = CDRF_NEWFONT;
+								dwResult = CDRF_NEWFONT;
 							}
 
 							break;
 						}
 					}
 
-					SetWindowLong(hwndDlg, DWL_MSGRESULT, lResult);
+					SetWindowLongPtr(hwndDlg, DWL_MSGRESULT, dwResult);
 					return 1;
 				}
 			}
@@ -695,6 +698,10 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 					if(SendDlgItemMessage(hwndDlg, IDC_TRAYMEMORYREGION_CB, CB_SETCURSEL, ini.read(APP_NAME_SHORT, L"TrayMemoryRegion", 0), 0) == CB_ERR)
 						SendDlgItemMessage(hwndDlg, IDC_TRAYMEMORYREGION_CB, CB_SETCURSEL, 0, 0);
+
+					// Show "Free"
+					CheckDlgButton(hwndDlg, IDC_TRAYSHOWFREE_CHK, ini.read(APP_NAME_SHORT, L"TrayShowFree", 0) ? BST_CHECKED : BST_UNCHECKED);
+					SetDlgItemTooltip(hwndDlg, IDC_TRAYSHOWFREE_CHK, ls(cfg.hLocale, IDS_TRAY_SHOW_FREE));
 
 					break;
 				}
@@ -1063,6 +1070,10 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 						// Tray displayed memory region
 						ini.write(APP_NAME_SHORT, L"TrayMemoryRegion", SendDlgItemMessage(tab_pages.hWnd[2], IDC_TRAYMEMORYREGION_CB, CB_GETCURSEL, 0, 0));
+
+						// Show "Free"
+						ini.write(APP_NAME_SHORT, L"TrayShowFree", (IsDlgButtonChecked(tab_pages.hWnd[2], IDC_TRAYSHOWFREE_CHK) == BST_CHECKED) ? 1 : 0);
+						
 					}
 
 					// APPEARANCE
@@ -1213,13 +1224,16 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			// Insert Items
 			for(int i = 0, j = 0; i < 3; i++)
 			{
-				for(int k = IDS_MEM_USAGE; k < (IDS_MEM_TOTAL + 1); k++)
+				for(int k = IDS_MEM_USED; k < (IDS_MEM_TOTAL + 1); k++)
 					Lv_InsertItem(hwndDlg, IDC_INFO, ls(cfg.hLocale, k), j++, 0, -1, i);
 			}
 
-			// Set UAC State for Button (for Vista and later)
+			// Privilege Indicator
 			if(cfg.bUnderUAC)
-				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_SETSHIELD, 0, TRUE);
+				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_SETSHIELD, 0, TRUE); // Windows Vista (and above)
+
+			if(!cfg.bAdminPrivilege && !cfg.bSupportedOS)
+				EnableWindow(GetDlgItem(hwndDlg, IDC_REDUCT), FALSE); // Windows XP
 
 			// Create Tray Icon
 			MEMORY_USAGE mu = {0};
@@ -1306,20 +1320,20 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			{
 				case NM_CUSTOMDRAW:
 				{
-					LONG lResult = CDRF_DODEFAULT;
+					LONG dwResult = CDRF_DODEFAULT;
 					LPNMLVCUSTOMDRAW lplvcd = (LPNMLVCUSTOMDRAW)lParam;
 
 					switch(lplvcd->nmcd.dwDrawStage)
 					{
 						case CDDS_PREPAINT:
 						{
-							lResult = CDRF_NOTIFYITEMDRAW;
+							dwResult = CDRF_NOTIFYITEMDRAW;
 							break;
 						}
 
 						case CDDS_ITEMPREPAINT:
 						{
-							lResult = CDRF_NOTIFYSUBITEMDRAW;
+							dwResult = CDRF_NOTIFYSUBITEMDRAW;
 							break;
 						}
 
@@ -1334,14 +1348,14 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 								else
 									lplvcd->clrText = ini.read(APP_NAME_SHORT, L"ListViewTextClr", COLOR_TEXT);
 
-								lResult = CDRF_NEWFONT;
+								dwResult = CDRF_NEWFONT;
 							}
 
 							break;
 						}
 					}
 
-					SetWindowLong(hwndDlg, DWL_MSGRESULT, lResult);
+					SetWindowLongPtr(hwndDlg, DWL_MSGRESULT, dwResult);
 					return 1;
 				}
 			}
@@ -1398,7 +1412,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				case UID + 1:
 				{
 					// Auto-Reduct Option
-					if(cfg.bAutoReduct && mu.dwPercentPhys >= cfg.uAutoReductPercents)
+					if(cfg.bAdminPrivilege && cfg.bAutoReduct && mu.dwPercentPhys >= cfg.uAutoReductPercents)
 					{
 						MemReduct(0, 1);
 

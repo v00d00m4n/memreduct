@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 05/04/13
+// lastmod: 13/04/13
 
 #ifndef __ROUTINE_H__
 #define __ROUTINE_H__
@@ -42,6 +42,7 @@ BOOL ShowEditBalloonTip(HWND hWnd, INT iCtrlId, LPCTSTR lpcszTitle, LPCTSTR lpcs
 BOOL IsAdmin();
 BOOL IsUnderUAC();
 BOOL RunElevated(HWND hWnd, LPCTSTR pszPath, LPCTSTR pszParameters = NULL);
+BOOL SetMenuItemShield(HMENU hMenu, UINT uItem, BOOL fByPosition);
 BOOL FileExists(LPCTSTR lpcszPath);
 BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpcszPrivilege, BOOL bEnablePrivilege);
 BOOL ValidWindowsVersion(DWORD dwMajorVersion, DWORD dwMinorVersion);

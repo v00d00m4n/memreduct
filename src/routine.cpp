@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 05/04/13
+// lastmod: 13/04/13
 
 #include "routine.h"
 
@@ -330,6 +330,76 @@ BOOL RunElevated(HWND hWnd, LPCTSTR pszPath, LPCTSTR pszParameters)
     shex.nShow = SW_NORMAL;
 
     return ShellExecuteEx(&shex);
+}
+
+// Set UAC Shield for menu item
+BOOL SetMenuItemShield(HMENU hMenu, UINT uItem, BOOL fByPosition)
+{
+	INT iWidth = GetSystemMetrics(SM_CXMENUCHECK);
+	INT iHeight = GetSystemMetrics(SM_CYMENUCHECK);
+
+	HICON hShieldIco = NULL;
+
+	if(SUCCEEDED(LoadIconMetric(NULL, IDI_SHIELD, LIM_SMALL, &hShieldIco)))
+	{
+		// RECT
+		RECT rc = {0};
+
+		rc.right = iWidth;
+		rc.bottom = iHeight;
+
+		// BLENDFUNCTION
+		BLENDFUNCTION bf = {0};
+
+		bf.AlphaFormat = AC_SRC_OVER;
+		bf.BlendOp = AC_SRC_OVER;
+		bf.SourceConstantAlpha = 255;
+
+		// BITMAPINFO
+		BITMAPINFO bi = {0};
+
+		bi.bmiHeader.biSize = sizeof(bi);
+		bi.bmiHeader.biPlanes = 1;
+		bi.bmiHeader.biCompression = BI_RGB;
+		bi.bmiHeader.biWidth = iWidth;
+		bi.bmiHeader.biHeight = iHeight;
+		bi.bmiHeader.biBitCount = 32;
+
+		// BP_PAINTPARAMS
+		BP_PAINTPARAMS bpp = {0};
+		bpp.cbSize = sizeof(bpp);
+		bpp.dwFlags = BPPF_ERASE;
+		bpp.pBlendFunction = &bf;
+
+		HDC hDC = GetDC(NULL);
+		HDC hCompDC = CreateCompatibleDC(hDC);
+		HBITMAP hDib = CreateDIBSection(hCompDC, &bi, DIB_RGB_COLORS, NULL, NULL, 0);
+		ReleaseDC(NULL, hDC);
+
+		HBITMAP hBitmap = (HBITMAP)SelectObject(hCompDC, hDib);
+
+		HDC hDcBuffer = NULL;
+		HPAINTBUFFER pb = BeginBufferedPaint(hCompDC, &rc, BPBF_DIB, &bpp, &hDcBuffer);
+		DrawIconEx(hDcBuffer, 0, 0, hShieldIco, iWidth, iHeight, 0, NULL, DI_NORMAL);
+
+		EndBufferedPaint(pb, TRUE);
+
+		SelectObject(hCompDC, hBitmap);
+		DeleteDC(hCompDC);
+
+		// MENUITEMINFO
+		MENUITEMINFO mii = {0};
+
+		mii.cbSize = sizeof(mii);
+		mii.fMask = MIIM_BITMAP;
+		mii.hbmpItem = hDib;
+
+		SetMenuItemInfo(hMenu, uItem, fByPosition, &mii);
+
+		DestroyIcon(hShieldIco);
+	}
+
+	return 1;
 }
 
 // Check is File Exists

@@ -127,7 +127,7 @@
 #define IDS_CLEANER_COL_2	                    10019
 #define IDS_CLEANER_COL_3	                    10020
 												
-#define IDS_CLEANER_SELECTAREA	                10021
+#define IDS_CLEANER_SELECTREGION                10021
 #define IDS_CLEANER_WARNING			            10022
 												
 #define IDS_PAGE_1								10023

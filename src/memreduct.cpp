@@ -260,7 +260,7 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 	if(!ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) && !ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0))
 	{
 		if(!bSilent)
-			MessageBox(hWnd, ls(cfg.hLocale, IDS_CLEANER_SELECTAREA), APP_NAME, MB_OK | MB_ICONSTOP);
+			MessageBox(hWnd, ls(cfg.hLocale, IDS_CLEANER_SELECTREGION), APP_NAME, MB_OK | MB_ICONSTOP);
 
 		return 0;
 	}
@@ -1523,8 +1523,11 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						mii.dwTypeData = buffer.GetBuffer();
 						mii.cch = buffer.GetLength();
 
-						SetMenuItemInfo(hSubMenu, IDM_TRAY_SHOW, 0, &mii);
+						SetMenuItemInfo(hSubMenu, IDM_TRAY_SHOW, FALSE, &mii);
 					}
+
+					if(cfg.bUnderUAC)
+						SetMenuItemShield(hSubMenu, IDM_TRAY_REDUCT, FALSE);
 
 					// Prevent Re-opening Dialogs
 					if(cfg.bReductDlg)

@@ -7,24 +7,24 @@
 
 // Dialogs
 #define IDD_MAIN	                            100
-#define IDD_REDUCT	                            101
-#define IDD_SETTINGS                            102
-#define IDD_PAGE_1								103
-#define IDD_PAGE_2								104
-#define IDD_PAGE_3								105
-#define IDD_PAGE_4								106
-#define IDD_PAGE_5								107
+#define IDD_SETTINGS                            101
+#define IDD_PAGE_1								102
+#define IDD_PAGE_2								103
+#define IDD_PAGE_3								104
+#define IDD_PAGE_4								105
+#define IDD_PAGE_5								106
+#define IDD_PAGE_6								107
 
 // Menu Id
 #define IDM_MAIN		                        100
 #define IDM_TRAY		                        101
 
 // Main Dlg
-#define IDC_INFO								100
-#define IDC_REDUCT								101
-
-// Cleaner Dlg
-#define IDC_RESULT								100
+#define IDC_MONITOR								100
+#define IDC_RESULT								101
+#define IDC_REGION								102
+#define IDC_REDUCT								103
+#define IDC_SWITCH								104
 
 // Settings Dlg
 #define IDC_TAB									100
@@ -69,6 +69,9 @@
 #define IDC_BALLOON_WARNING_CHK					127
 #define IDC_BALLOON_DANGER_CHK					128
 #define IDC_BALLOONINTERVAL						129
+
+// Page #6 Dlg
+#define IDC_STATISTIC							130
 
 // Common Controls
 #define IDC_OK									1000
@@ -122,27 +125,32 @@
 
 #define IDS_UNIT_KB		                        10016
 #define IDS_UNIT_MB		                        10017
+							
+#define IDS_REDUCT_SELECTREGION					10021
+#define IDS_REDUCT_WARNING			            10022
 
-#define IDS_CLEANER_COL_1	                    10018
-#define IDS_CLEANER_COL_2	                    10019
-#define IDS_CLEANER_COL_3	                    10020
-												
-#define IDS_CLEANER_SELECTREGION                10021
-#define IDS_CLEANER_WARNING			            10022
-												
-#define IDS_PAGE_1								10023
-#define IDS_PAGE_2								10024
-#define IDS_PAGE_3								10025
-#define IDS_PAGE_4								10026
-#define IDS_PAGE_5								10027
+#define IDS_REDUCT_REGION			            10023
+#define IDS_REDUCT_RESULT			            10024
 
-#define IDS_DOUBLECLICK_1						10028
-#define IDS_DOUBLECLICK_2						10029
-#define IDS_DOUBLECLICK_3						10030
-#define IDS_DOUBLECLICK_4						10031
+#define IDS_REDUCT_REGION_1			            10025
+#define IDS_REDUCT_REGION_2			            10026
+#define IDS_REDUCT_REGION_3			            10027
+#define IDS_REDUCT_REGION_4			            10028
+			
+#define IDS_PAGE_1								10029
+#define IDS_PAGE_2								10030
+#define IDS_PAGE_3								10031
+#define IDS_PAGE_4								10032
+#define IDS_PAGE_5								10033
+#define IDS_PAGE_6								10034
 
-#define IDS_UAC_WARNING							10032
-#define IDS_TRAY_SHOW_FREE						10033
+#define IDS_DOUBLECLICK_1						10035
+#define IDS_DOUBLECLICK_2						10036
+#define IDS_DOUBLECLICK_3						10037
+#define IDS_DOUBLECLICK_4						10038
+
+#define IDS_UAC_WARNING							10039
+#define IDS_TRAY_SHOW_FREE						10040
 
 // Icons
 #define IDI_MAIN	                            100

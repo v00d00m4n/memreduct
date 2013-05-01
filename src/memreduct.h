@@ -27,10 +27,10 @@
 
 #define COLOR_TRAY_TEXT		0xFFFFFF
 #define COLOR_TRAY_BG		0xEF892D
-#define COLOR_TEXT			0x3D3D3D
-#define COLOR_GREEN			0x45711E
-#define COLOR_YELLOW		0x1479C0
-#define COLOR_RED			0x471DB9
+#define COLOR_LISTVIEW_TEXT	0x3D3D3D
+#define COLOR_LEVEL_NORMAL	0x45711E
+#define COLOR_LEVEL_WARNING	0x2C53DA
+#define COLOR_LEVEL_DANGER	0x471DB9
 
 // Settings Structure
 struct CONFIG
@@ -53,18 +53,18 @@ struct CONFIG
 	BOOL bBalloonShow; // balloon show switch
 
 	UINT uUnitDivider; // divider for unit (kb - 1024, mb - 1048576)
-	UINT uAutoReductPercents; // Auto-Reduct threshold
-	UINT uYellowLevel; // yellow color threshold
-	UINT uRedLevel; // red color threshold
-
-	BOOL bSettingsDlg;
-	BOOL bReductDlg;
+	UINT uAutoReductPercents; // Auto-Reduct level
+	UINT uWarningLevel; // "warning level" color
+	UINT uDangerLevel; // "danger level" color
 
 	DWORD dwLastBalloon;
 
 	LOGFONT lf;
 
 	BOOL bSwitch;
+
+	LPWSTR lpszRegions[4];
+	BOOL bRegions[4];
 };
 
 typedef struct _TAB_PAGES

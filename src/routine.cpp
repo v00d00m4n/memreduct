@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 13/04/13
+// lastmod: 28/04/13
 
 #include "routine.h"
 
@@ -335,18 +335,24 @@ BOOL RunElevated(HWND hWnd, LPCTSTR pszPath, LPCTSTR pszParameters)
 // Set UAC Shield for menu item
 BOOL SetMenuItemShield(HMENU hMenu, UINT uItem, BOOL fByPosition)
 {
-	INT iWidth = GetSystemMetrics(SM_CXMENUCHECK);
-	INT iHeight = GetSystemMetrics(SM_CYMENUCHECK);
-
 	HICON hShieldIco = NULL;
 
-	if(SUCCEEDED(LoadIconMetric(NULL, IDI_SHIELD, LIM_SMALL, &hShieldIco)))
+	// Load functions directly
+	typedef HRESULT (WINAPI* FPLOADICONMETRIC)(HINSTANCE hinst, PCWSTR pszName, int lims, __out HICON *phico); // LoadIconMetric
+	typedef HPAINTBUFFER (WINAPI* FPBEGINBUFFEREDPAINT)(HDC hdcTarget, const RECT* prcTarget, BP_BUFFERFORMAT dwFormat, __in_opt BP_PAINTPARAMS *pPaintParams, __out HDC *phdc); // BeginBufferedPaint
+	typedef HRESULT (WINAPI* FPENDBUFFEREDPAINT)(HPAINTBUFFER hBufferedPaint, BOOL fUpdateTarget); // EndBufferedPaint
+
+	FPLOADICONMETRIC loadiconmetric = (FPLOADICONMETRIC)GetProcAddress(GetModuleHandle(L"comctl32.dll"), "LoadIconMetric"); // LoadIconMetric
+	FPBEGINBUFFEREDPAINT beginbufferedpaint = (FPBEGINBUFFEREDPAINT)GetProcAddress(GetModuleHandle(L"uxtheme.dll"), "BeginBufferedPaint"); // BeginBufferedPaint
+	FPENDBUFFEREDPAINT endbufferedpaint = (FPENDBUFFEREDPAINT)GetProcAddress(GetModuleHandle(L"uxtheme.dll"), "EndBufferedPaint"); // EndBufferedPaint
+
+	if(loadiconmetric && beginbufferedpaint && endbufferedpaint && SUCCEEDED(loadiconmetric(NULL, IDI_SHIELD, LIM_SMALL, &hShieldIco)))
 	{
 		// RECT
 		RECT rc = {0};
 
-		rc.right = iWidth;
-		rc.bottom = iHeight;
+		rc.right = GetSystemMetrics(SM_CXMENUCHECK);
+		rc.bottom = GetSystemMetrics(SM_CYMENUCHECK);
 
 		// BLENDFUNCTION
 		BLENDFUNCTION bf = {0};
@@ -361,8 +367,8 @@ BOOL SetMenuItemShield(HMENU hMenu, UINT uItem, BOOL fByPosition)
 		bi.bmiHeader.biSize = sizeof(bi);
 		bi.bmiHeader.biPlanes = 1;
 		bi.bmiHeader.biCompression = BI_RGB;
-		bi.bmiHeader.biWidth = iWidth;
-		bi.bmiHeader.biHeight = iHeight;
+		bi.bmiHeader.biWidth = rc.right;
+		bi.bmiHeader.biHeight = rc.bottom;
 		bi.bmiHeader.biBitCount = 32;
 
 		// BP_PAINTPARAMS
@@ -379,10 +385,10 @@ BOOL SetMenuItemShield(HMENU hMenu, UINT uItem, BOOL fByPosition)
 		HBITMAP hBitmap = (HBITMAP)SelectObject(hCompDC, hDib);
 
 		HDC hDcBuffer = NULL;
-		HPAINTBUFFER pb = BeginBufferedPaint(hCompDC, &rc, BPBF_DIB, &bpp, &hDcBuffer);
-		DrawIconEx(hDcBuffer, 0, 0, hShieldIco, iWidth, iHeight, 0, NULL, DI_NORMAL);
+		HPAINTBUFFER pb = beginbufferedpaint(hCompDC, &rc, BPBF_DIB, &bpp, &hDcBuffer);
+		DrawIconEx(hDcBuffer, 0, 0, hShieldIco, rc.right, rc.bottom, 0, NULL, DI_NORMAL);
 
-		EndBufferedPaint(pb, TRUE);
+		endbufferedpaint(pb, TRUE);
 
 		SelectObject(hCompDC, hBitmap);
 		DeleteDC(hCompDC);
@@ -396,10 +402,13 @@ BOOL SetMenuItemShield(HMENU hMenu, UINT uItem, BOOL fByPosition)
 
 		SetMenuItemInfo(hMenu, uItem, fByPosition, &mii);
 
+		// Clear resources
 		DestroyIcon(hShieldIco);
+
+		return TRUE;
 	}
 
-	return 1;
+	return FALSE;
 }
 
 // Check is File Exists

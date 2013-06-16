@@ -15,8 +15,9 @@
 #include <shlobj.h>
 #include <atlstr.h> // cstring
 #include <process.h> // _beginthreadex
+#include <vssym32.h>
 #include <vsstyle.h>
-
+#include <time.h>
 #include "memreduct.h"
 #include "routine.h"
 #include "resource.h"
@@ -93,40 +94,37 @@ DWORD GetMemoryUsage(LPMEMORY_USAGE lpmu)
 	MEMORYSTATUSEX msex = {0};
 	msex.dwLength = sizeof(msex);
 
+	SYSTEM_CACHE_INFORMATION sci = {0};
+
+	// Physical & Pagefile
 	if(GlobalMemoryStatusEx(&msex))
 	{
-		// Physical
 		lpmu->dwPercentPhys = msex.dwMemoryLoad;
 
-		lpmu->ullFilledPhys = (msex.ullTotalPhys - msex.ullAvailPhys) / cfg.uUnitDivider;
+		lpmu->ullFreePhys = msex.ullAvailPhys / cfg.uUnitDivider;
 		lpmu->ullTotalPhys = msex.ullTotalPhys / cfg.uUnitDivider;
 
-		// Pagefile
 		lpmu->dwPercentPageFile = DWORD((msex.ullTotalPageFile - msex.ullAvailPageFile) / (msex.ullTotalPageFile / 100));
 
-		lpmu->ullFilledPageFile = (msex.ullTotalPageFile - msex.ullAvailPageFile) / cfg.uUnitDivider;
+		lpmu->ullFreePageFile = msex.ullAvailPageFile / cfg.uUnitDivider;
 		lpmu->ullTotalPageFile = msex.ullTotalPageFile / cfg.uUnitDivider;
 	}
 
-	SYSTEM_CACHE_INFORMATION sci = {0};
+	// System working set
 	if(NT_SUCCESS(NtQuerySystemInformation(SystemFileCacheInformation, &sci, sizeof(sci), 0)))
 	{
-		// System working set
 		lpmu->dwPercentSystemWorkingSet = sci.CurrentSize / (sci.PeakSize / 100);
 	
-		lpmu->ullFilledSystemWorkingSet = sci.CurrentSize / cfg.uUnitDivider;
+		lpmu->ullFreeSystemWorkingSet = (sci.PeakSize - sci.CurrentSize) / cfg.uUnitDivider;
 		lpmu->ullTotalSystemWorkingSet = sci.PeakSize / cfg.uUnitDivider;
 	}
 
 	// Return percents
-	switch(ini.read(APP_NAME_SHORT, L"TrayMemoryRegion", 0))
-	{
-		case 1:
-			return lpmu->dwPercentPageFile;
+	if(cfg.uTrayRegion == 1)
+		return lpmu->dwPercentPageFile;
 
-		case 2:
+	else if(cfg.uTrayRegion == 1)
 			return lpmu->dwPercentSystemWorkingSet;
-	}
 
 	return lpmu->dwPercentPhys;
 }
@@ -165,12 +163,8 @@ HICON CreateMemIcon(DWORD dwData)
 	CString buffer;
 	RECT rc = {0, 0, 16, 16}; // icon rect
 
-	BOOL TrayChangeBackground = ini.read(APP_NAME_SHORT, L"TrayChangeBackground", 1);
-	BOOL TrayShowFree = ini.read(APP_NAME_SHORT, L"TrayShowFree", 0);
-
-	// Initialize Color
-	COLORREF clrTextColor = ini.read(APP_NAME_SHORT, L"TrayTextClr", COLOR_TRAY_TEXT);
-	COLORREF clrIndicator = NULL;
+	// Initialize colors
+	COLORREF clrTextColor = ini.read(APP_NAME_SHORT, L"TrayTextClr", COLOR_TRAY_TEXT), clrIndicator = NULL;
 
 	if(cfg.bColorIndicationTray)
 	{
@@ -181,7 +175,7 @@ HICON CreateMemIcon(DWORD dwData)
 			clrIndicator = ini.read(APP_NAME_SHORT, L"LevelWarningClr", COLOR_LEVEL_WARNING);;
 	}
 
-	// Create Bitmap
+	// Create bitmap
     HDC hDC = GetDC(NULL);
     HDC hCompatibleDC = CreateCompatibleDC(hDC);
 	HBITMAP hBitmap = CreateCompatibleBitmap(hDC, rc.right, rc.bottom);
@@ -190,26 +184,26 @@ HICON CreateMemIcon(DWORD dwData)
 
     HBITMAP hOldBitMap = (HBITMAP)SelectObject(hCompatibleDC, hBitmap);
 
-	// Instead FillRect
-	COLORREF clrOld = SetBkColor(hCompatibleDC, TrayChangeBackground && clrIndicator ? clrIndicator : ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", COLOR_TRAY_BG));
+	// Fill rectangle
+	COLORREF clrOld = SetBkColor(hCompatibleDC, cfg.bTrayChangeBg && clrIndicator ? clrIndicator : ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", COLOR_TRAY_BG));
 	ExtTextOut(hCompatibleDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
 	SetBkColor(hCompatibleDC, clrOld);
 
-	// Create Font
+	// Create font
 	HFONT hTrayFont = CreateFontIndirect(&cfg.lf);
 	SelectObject(hCompatibleDC, hTrayFont);
 
-	// Draw Text
-	SetTextColor(hCompatibleDC, !TrayChangeBackground && clrIndicator ? clrIndicator : clrTextColor);
+	// Draw text
+	SetTextColor(hCompatibleDC, !cfg.bTrayChangeBg && clrIndicator ? clrIndicator : clrTextColor);
 	SetBkMode(hCompatibleDC, TRANSPARENT);
 
-	buffer.Format(L"%d\0", TrayShowFree ? 100 - dwData : dwData);
+	buffer.Format(L"%d\0", cfg.bTrayShowFree ? 100 - dwData : dwData);
 	DrawTextEx(hCompatibleDC, buffer.GetBuffer(), buffer.GetLength(), &rc,  DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP, NULL);
 
-	// Draw Border
+	// Draw border
 	if(ini.read(APP_NAME_SHORT, L"TrayShowBorder", 0))
 	{
-		HBRUSH hBrush = CreateSolidBrush(!TrayChangeBackground && clrIndicator ? clrIndicator : clrTextColor);
+		HBRUSH hBrush = CreateSolidBrush(!cfg.bTrayChangeBg && clrIndicator ? clrIndicator : clrTextColor);
 		HRGN hRgn = CreateRectRgnIndirect(&rc);
 		FrameRgn(hCompatibleDC, hRgn, hBrush, 1, 1);
 
@@ -219,11 +213,11 @@ HICON CreateMemIcon(DWORD dwData)
 
 	SelectObject(hDC, hOldBitMap);
 
-	// Create Icon
+	// Create icon
 	ICONINFO ii = {TRUE, 0, 0, hBitmapMask, hBitmap};
 	HICON hIcon = CreateIconIndirect(&ii);
 
-	// Free Resources
+	// Free resources
 	DeleteObject(SelectObject(hCompatibleDC, hTrayFont));
 	DeleteDC(hCompatibleDC);
 	DeleteDC(hDC);
@@ -233,7 +227,7 @@ HICON CreateMemIcon(DWORD dwData)
 	return hIcon;
 }
 
-// Memory Reduction Wrapper
+// Memory reduction wrapper
 BOOL MemReduct(HWND hWnd, BOOL bSilent)
 {
 	CString buffer;
@@ -360,10 +354,6 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			// Activate Tab Texture
 			EnableThemeDialogTexture(hwndDlg, ETDT_ENABLETAB);
 
-			// Indicate Labels
-			for(int i = IDC_TITLE_1; GetDlgItem(hwndDlg, i); i++)
-				SendDlgItemMessage(hwndDlg, i, WM_SETFONT, (WPARAM)cfg.hBold, 0);
-
 			switch(SendDlgItemMessage(GetParent(hwndDlg), IDC_TAB, TCM_GETCURSEL, 0, 0))
 			{
 				// GENERAL
@@ -484,7 +474,6 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 					// Show "Free"
 					CheckDlgButton(hwndDlg, IDC_TRAYSHOWFREE_CHK, ini.read(APP_NAME_SHORT, L"TrayShowFree", 0) ? BST_CHECKED : BST_UNCHECKED);
-					SetDlgItemTooltip(hwndDlg, IDC_TRAYSHOWFREE_CHK, ls(cfg.hLocale, IDS_TRAY_SHOW_FREE));
 
 					break;
 				}
@@ -495,6 +484,8 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					// Icon
 					CheckDlgButton(hwndDlg, IDC_TRAY_SHOW_BORDER_CHK, ini.read(APP_NAME_SHORT, L"TrayShowBorder", 0) ? BST_CHECKED : BST_UNCHECKED);
 					CheckDlgButton(hwndDlg, IDC_TRAY_CHANGE_BACKGROUND_CHK, ini.read(APP_NAME_SHORT, L"TrayChangeBackground", 1) ? BST_CHECKED : BST_UNCHECKED);
+
+					SetDlgItemText(hwndDlg, IDC_TRAY_FONT_BTN, cfg.lf.lfFaceName);
 
 					break;
 				}
@@ -548,27 +539,53 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		{
 			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
 
-			// Draw button
+			if(lpdis->itemAction == ODA_DRAWENTIRE && (wParam == IDC_TITLE_1 || wParam == IDC_TITLE_2 || wParam == IDC_TITLE_3))
+			{
+				DrawTitle(hwndDlg, wParam, lpdis->hDC, &lpdis->rcItem, cfg.hTitleFont);
+				return TRUE;
+			}
+
 			HTHEME hTheme = OpenThemeDataEx(hwndDlg, L"BUTTON", 0);
-			INT iBtnState = PBS_DEFAULTED;
 
-			if(lpdis->itemState & ODS_SELECTED)
-				iBtnState = PBS_PRESSED;
+			if(hTheme)
+			{
+				// Draw styled button
+				iBuffer = PBS_DEFAULTED;
+				
+				if(lpdis->itemState & ODS_SELECTED)
+					iBuffer = PBS_PRESSED;
 
-			if(IsThemeBackgroundPartiallyTransparent(hTheme, BP_PUSHBUTTON, iBtnState))
-				DrawThemeParentBackground(hwndDlg, lpdis->hDC, &lpdis->rcItem);
+				else if(lpdis->itemState & ODS_HOTLIGHT)
+					iBuffer = PBS_HOT;
 
-			DrawThemeBackgroundEx(hTheme, lpdis->hDC, BP_PUSHBUTTON, iBtnState, &lpdis->rcItem, NULL);
+				if(IsThemeBackgroundPartiallyTransparent(hTheme, BP_PUSHBUTTON, iBuffer))
+					DrawThemeParentBackground(hwndDlg, lpdis->hDC, &lpdis->rcItem);
+
+				DrawThemeBackgroundEx(hTheme, lpdis->hDC, BP_PUSHBUTTON, iBuffer, &lpdis->rcItem, NULL);
 	
-			CloseThemeData(hTheme);
+				CloseThemeData(hTheme);
+			}
+			else
+			{
+				// Draw classic button
+				iBuffer = DFCS_BUTTONPUSH;
+				
+				if(lpdis->itemState & ODS_SELECTED)
+					iBuffer |= DFCS_PUSHED;
 
-			// Calc rect for color indicator
+				else if(lpdis->itemState & ODS_HOTLIGHT)
+					iBuffer |= DFCS_HOT;
+
+				DrawFrameControl(lpdis->hDC, &lpdis->rcItem, DFC_BUTTON, iBuffer);
+			}
+
+			// New rect for color indicator
 			lpdis->rcItem.left += 6;
 			lpdis->rcItem.top += 6;
 			lpdis->rcItem.right -= 6;
 			lpdis->rcItem.bottom -= 6;
 
-			// Configure
+			// Draw background
 			COLORREF clrBg = 0;
 				
 			if(wParam == IDC_TRAY_TEXT_CLR_BTN)
@@ -589,7 +606,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			else if(wParam == IDC_LEVEL_DANGER_CLR_BTN)
 				clrBg = ini.read(APP_NAME_SHORT, L"LevelDangerClr", COLOR_LEVEL_DANGER);
 
-			// Fill rectangle
+			// FillRect
 			COLORREF clrOld = SetBkColor(lpdis->hDC, clrBg);
 			ExtTextOut(lpdis->hDC, 0, 0, ETO_OPAQUE, &lpdis->rcItem, NULL, 0, NULL);
 			SetBkColor(lpdis->hDC, clrOld);
@@ -665,6 +682,27 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 			switch(LOWORD(wParam))
 			{
+
+				case IDC_TRAY_FONT_BTN:
+				{
+					CHOOSEFONT cf = {0};
+
+					cf.lStructSize = sizeof(cf);
+					cf.hwndOwner = hwndDlg;
+					cf.Flags = CF_FORCEFONTEXIST | CF_NOSCRIPTSEL | CF_INITTOLOGFONTSTRUCT;
+					cf.lpLogFont = &cfg.lf;
+
+					if(ChooseFont(&cf))
+					{
+						SetDlgItemText(hwndDlg, IDC_TRAY_FONT_BTN, cfg.lf.lfFaceName);
+
+						ini.write(APP_NAME_SHORT, L"FontFace", cfg.lf.lfFaceName);
+						ini.write(APP_NAME_SHORT, L"FontHeight", cfg.lf.lfHeight);
+					}
+
+					break;
+				}
+
 				case IDC_TRAY_TEXT_CLR_BTN:
 				case IDC_TRAY_BG_CLR_BTN:
 				case IDC_LISTVIEW_TEXT_CLR_BTN:
@@ -757,10 +795,10 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 	{
 		case WM_INITDIALOG:
 		{
-			// Centering By Parent
+			// Centering by parent
 			CenterDialog(hwndDlg);
 
-			// Insert Tab Pages
+			// Insert tab pages
 			TCITEM tci = {0};
 
 			for(int i = 0; i < PAGE_COUNT; i++)
@@ -774,7 +812,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 				SendDlgItemMessage(hwndDlg, IDC_TAB, TCM_INSERTITEM, i, (LPARAM)&tci);
 			}
 
-			// Calculate Tab Rect
+			// Calculate tab pages rect
 			if(IsRectEmpty(&tab_pages.rc))
 			{
 				RECT rc = {0};
@@ -787,56 +825,54 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 				tab_pages.rc.top += rc.top + 1;	tab_pages.rc.left += rc.left - 1; tab_pages.rc.right += rc.left - 1; tab_pages.rc.bottom += rc.top - 1;
 			}
 
-			// Reset Pages Handles
+			// Reset tab pages handles
 			for(int i = 0; i < PAGE_COUNT; i++)
 				tab_pages.hWnd[i] = NULL;
 
-			// Set Last Used Tab to Current
+			// Activate last used tab page
 			SendDlgItemMessage(hwndDlg, IDC_TAB, TCM_SETCURSEL, ini.read(APP_NAME_SHORT, L"LastTab", 0), 0);
 			
-			// Initialize Page
+			// Initialize page
 			NMHDR hdr = {0};
 			hdr.code = TCN_SELCHANGE;
 			hdr.idFrom = IDC_TAB;
 
 			SendMessage(hwndDlg, WM_NOTIFY, 0, (LPARAM)&hdr);
 
-			// Disable "Apply" Button
+			// Disable "Apply" button
 			EnableWindow(GetDlgItem(hwndDlg, IDC_APPLY), 0);
 
 			break;
 		}
-
-		case WM_CLOSE:
+		
+		case WM_DESTROY:
 		{
 			ini.write(APP_NAME_SHORT, L"LastTab", SendDlgItemMessage(hwndDlg, IDC_TAB, TCM_GETCURSEL, 0, 0));
-			EndDialog(hwndDlg, 0);
-
 			break;
 		}
 
 		case WM_NOTIFY:
 		{
-			LPNMHDR lpnmhdr = (LPNMHDR)lParam;
+			LPNMHDR lphdr = (LPNMHDR)lParam;
 
-			switch(lpnmhdr->code)
+			switch(lphdr->code)
 			{
 				case TCN_SELCHANGE:
 				{
-					if(lpnmhdr->idFrom == IDC_TAB)
+					if(lphdr->idFrom == IDC_TAB)
 					{
-						iBuffer = SendDlgItemMessage(hwndDlg, lpnmhdr->idFrom, TCM_GETCURSEL, 0, 0);
+						iBuffer = SendDlgItemMessage(hwndDlg, lphdr->idFrom, TCM_GETCURSEL, 0, 0);
 						ShowWindow(tab_pages.hCurrent, SW_HIDE);
 
 						if(tab_pages.hWnd[iBuffer])
 						{
-							// Show Window
+							// Show existing...
 							ShowWindow(tab_pages.hWnd[iBuffer], SW_SHOW);
 							tab_pages.hCurrent = tab_pages.hWnd[iBuffer];
 						}
 						else
 						{
-							// Create Window
+							// Create new...
 							tab_pages.hCurrent = CreateDialog(cfg.hLocale, MAKEINTRESOURCE(tab_pages.iDialog[iBuffer]), hwndDlg, PagesDlgProc);
 							tab_pages.hWnd[iBuffer] = tab_pages.hCurrent;
 						}
@@ -868,7 +904,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						ini.write(APP_NAME_SHORT, L"AlwaysOnTop", iBuffer);
 						SetWindowPos(cfg.hWnd, (iBuffer ? HWND_TOPMOST : HWND_NOTOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
-						// Color Indication
+						// Color indication
 						cfg.bColorIndicationTray = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_COLOR_INDICATION_TRAY_CHK) == BST_CHECKED);
 						ini.write(APP_NAME_SHORT, L"ColorIndicationTray", cfg.bColorIndicationTray);
 
@@ -945,18 +981,21 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						ini.write(APP_NAME_SHORT, L"OnDoubleClick", SendDlgItemMessage(tab_pages.hWnd[2], IDC_DOUBLECLICK_CB, CB_GETCURSEL, 0, 0));
 
 						// Tray displayed memory region
-						ini.write(APP_NAME_SHORT, L"TrayMemoryRegion", SendDlgItemMessage(tab_pages.hWnd[2], IDC_TRAYMEMORYREGION_CB, CB_GETCURSEL, 0, 0));
+						cfg.uTrayRegion = SendDlgItemMessage(tab_pages.hWnd[2], IDC_TRAYMEMORYREGION_CB, CB_GETCURSEL, 0, 0);
+						ini.write(APP_NAME_SHORT, L"TrayMemoryRegion", cfg.uTrayRegion);
 
 						// Show "Free"
-						ini.write(APP_NAME_SHORT, L"TrayShowFree", (IsDlgButtonChecked(tab_pages.hWnd[2], IDC_TRAYSHOWFREE_CHK) == BST_CHECKED) ? 1 : 0);
-						
+						cfg.bTrayShowFree = (IsDlgButtonChecked(tab_pages.hWnd[2], IDC_TRAYSHOWFREE_CHK) == BST_CHECKED) ? 1 : 0;
+						ini.write(APP_NAME_SHORT, L"TrayShowFree", cfg.bTrayShowFree);
 					}
 
 					// APPEARANCE
 					if(tab_pages.hWnd[3])
 					{
 						ini.write(APP_NAME_SHORT, L"TrayShowBorder", (IsDlgButtonChecked(tab_pages.hWnd[3], IDC_TRAY_SHOW_BORDER_CHK) == BST_CHECKED));
-						ini.write(APP_NAME_SHORT, L"TrayChangeBackground", (IsDlgButtonChecked(tab_pages.hWnd[3], IDC_TRAY_CHANGE_BACKGROUND_CHK) == BST_CHECKED));
+
+						cfg.bTrayChangeBg = IsDlgButtonChecked(tab_pages.hWnd[3], IDC_TRAY_CHANGE_BACKGROUND_CHK) == BST_CHECKED;
+						ini.write(APP_NAME_SHORT, L"TrayChangeBackground", cfg.bTrayChangeBg);
 					}
 
 					// BALLOON
@@ -986,7 +1025,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 				case IDCANCEL: // process Esc key
 				case IDC_CANCEL:
 				{
-					SendMessage(hwndDlg, WM_CLOSE, 0, 0);
+					EndDialog(hwndDlg, 0);
 					break;
 				}
 			}
@@ -1000,7 +1039,12 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 VOID Switch(HWND hWnd)
 {
-	ShowWindow(GetDlgItem(hWnd, IDC_REGION), cfg.bSwitch ? SW_SHOW : SW_HIDE);
+	ShowWindow(GetDlgItem(hWnd, IDC_TITLE_1), cfg.bSwitch ? SW_SHOW : SW_HIDE);
+	ShowWindow(GetDlgItem(hWnd, IDC_TITLE_2), cfg.bSwitch ? SW_SHOW : SW_HIDE);
+	ShowWindow(GetDlgItem(hWnd, IDC_WORKING_SET_CHK), cfg.bSwitch ? SW_SHOW : SW_HIDE);
+	ShowWindow(GetDlgItem(hWnd, IDC_SYSTEM_WORKING_SET_CHK), cfg.bSwitch ? SW_SHOW : SW_HIDE);
+	ShowWindow(GetDlgItem(hWnd, IDC_MODIFIED_PAGELIST_CHK), cfg.bSwitch ? SW_SHOW : SW_HIDE);
+	ShowWindow(GetDlgItem(hWnd, IDC_STANDBY_PAGELIST_CHK), cfg.bSwitch ? SW_SHOW : SW_HIDE);
 	ShowWindow(GetDlgItem(hWnd, IDC_RESULT), cfg.bSwitch ? SW_SHOW : SW_HIDE);
 	ShowWindow(GetDlgItem(hWnd, IDC_REDUCT), cfg.bSwitch ? SW_SHOW : SW_HIDE);
 
@@ -1035,7 +1079,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			else if(GetLastError() == ERROR_ALREADY_EXISTS)
 			{
 				PostMessage(HWND_BROADCAST, WM_MUTEX, GetCurrentProcessId(), 1);
-				SendMessage(hwndDlg, WM_CLOSE, 0, 0);
+				DestroyWindow(hwndDlg);
 
 				return 0;
 			}
@@ -1053,11 +1097,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			InsertMenu(hMenu, -1, MF_BYPOSITION | MF_STRING, IDM_ABOUT, ls(cfg.hLocale, IDS_ABOUT));
 
 			// Load settings
-			LOGFONT lf = {0};
-			GetObject((HFONT)SendMessage(hwndDlg, WM_GETFONT, 0, 0), sizeof(lf), &lf);
-			lf.lfWeight = FW_BOLD;
-
-			cfg.hBold = CreateFontIndirect(&lf);
+			cfg.hTitleFont = GetTitleFont();
 			cfg.hWnd = hwndDlg;
 
 			cfg.bSupportedOS = ValidWindowsVersion(6, 0); // if vista (6.0) and later
@@ -1066,11 +1106,16 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 			cfg.bColorIndicationTray = ini.read(APP_NAME_SHORT, L"ColorIndicationTray", 1);
 			cfg.bColorIndicationListView = ini.read(APP_NAME_SHORT, L"ColorIndicationListView", 1);
+			cfg.bTrayChangeBg = ini.read(APP_NAME_SHORT, L"TrayChangeBackground", 1);
+			cfg.bTrayShowFree = ini.read(APP_NAME_SHORT, L"TrayShowFree", 0);
+
 			cfg.uWarningLevel = ini.read(APP_NAME_SHORT, L"WarningLevel", 60);
 			cfg.uDangerLevel = ini.read(APP_NAME_SHORT, L"DangerLevel", 90);
 
 			cfg.bAutoReduct = ini.read(APP_NAME_SHORT, L"AutoReduct", 0);
 			cfg.uAutoReductPercents = ini.read(APP_NAME_SHORT, L"AutoReductPercents", 90);
+
+			cfg.uTrayRegion = ini.read(APP_NAME_SHORT, L"TrayMemoryRegion", 0);
 
 			cfg.bBalloonShow = ini.read(APP_NAME_SHORT, L"BalloonShow", 1);
 
@@ -1079,7 +1124,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			StringCchCopy(cfg.szUnit, _countof(cfg.szUnit), ls(cfg.hLocale, iBuffer ? IDS_UNIT_KB : IDS_UNIT_MB));
 
 			StringCchCopy(cfg.lf.lfFaceName, _countof(cfg.lf.lfFaceName), ini.read(APP_NAME_SHORT, L"FontFace", MAX_PATH, L"Tahoma"));
-			cfg.lf.lfHeight = ini.read(APP_NAME_SHORT, L"FontHeight", -11);
+			cfg.lf.lfHeight = ini.read(APP_NAME_SHORT, L"FontHeight", 13);
 
 			// Always on top
 			SetWindowPos(hwndDlg, (ini.read(APP_NAME_SHORT, L"AlwaysOnTop", 0) ? HWND_TOPMOST : HWND_NOTOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
@@ -1101,15 +1146,11 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 			// Styling
 			Lv_SetStyleEx(hwndDlg, IDC_MONITOR, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE, TRUE);
-			Lv_SetStyleEx(hwndDlg, IDC_REGION, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER | LVS_EX_CHECKBOXES, TRUE, TRUE);
-			Lv_SetStyleEx(hwndDlg, IDC_RESULT, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE, TRUE);
+			Lv_SetStyleEx(hwndDlg, IDC_RESULT, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE, FALSE);
 
 			// Columns (Monitor)
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 1, LVCFMT_RIGHT);
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 2, LVCFMT_LEFT);
-
-			// Columns (Region)
-			Lv_InsertColumn(hwndDlg, IDC_REGION, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_REGION), WIDTH, TRUE), 0, LVCFMT_LEFT);
 
 			// Columns (Reduction)
 			for(int i = 0; i < 3; i++)
@@ -1119,60 +1160,29 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			for(int i = IDS_MEM_PHYSICAL, j = 0; i < (IDS_MEM_SYSCACHE + 1); i++, j++)
 				Lv_InsertGroup(hwndDlg, IDC_MONITOR, ls(cfg.hLocale, i), j);
 			
-			// Groups (Region)
-			Lv_InsertGroup(hwndDlg, IDC_REGION, ls(cfg.hLocale, IDS_REDUCT_REGION), 0);
-
-			// Groups (Reduction)
-			Lv_InsertGroup(hwndDlg, IDC_RESULT, ls(cfg.hLocale, IDS_REDUCT_RESULT), 0);
-
 			// Items (Monitor)
 			for(int i = 0, j = 0; i < 3; i++)
 			{
-				for(int k = IDS_MEM_USED; k < (IDS_MEM_TOTAL + 1); k++)
+				for(int k = IDS_MEM_USAGE; k < (IDS_MEM_TOTAL + 1); k++)
 					Lv_InsertItem(hwndDlg, IDC_MONITOR, ls(cfg.hLocale, k), j++, 0, -1, i);
 			}
 
-			cfg.lpszRegions[0] = L"CleanWorkingSet";
-			cfg.lpszRegions[1] = L"CleanSystemWorkingSet";
-			cfg.lpszRegions[2] = L"CleanModifiedPagelist";
-			cfg.lpszRegions[3] = L"CleanStandbyPagelist";
-
-			cfg.bRegions[0] = TRUE;
-			cfg.bRegions[1] = TRUE;
-			cfg.bRegions[2] = FALSE;
-			cfg.bRegions[3] = FALSE;
-
-			// Items (Region)
-			for(int i = IDS_REDUCT_REGION_1, j = 0; i < (IDS_REDUCT_REGION_4 + 1); i++, j++)
-			{
-				Lv_InsertItem(hwndDlg, IDC_REGION, ls(cfg.hLocale, i), j, 0, -1, 0);
-				ListView_SetCheckState(GetDlgItem(hwndDlg, IDC_REGION), j, ini.read(APP_NAME_SHORT, cfg.lpszRegions[j], cfg.bRegions[j]));
-			}
-			
 			// Items (Reduction)
 			for(int i = IDS_MEM_PHYSICAL, j = 0; i < (IDS_MEM_SYSCACHE + 1); i++, j++)
 			{
-				Lv_InsertItem(hwndDlg, IDC_RESULT, ls(cfg.hLocale, i), j, 0, -1, 0);
+				Lv_InsertItem(hwndDlg, IDC_RESULT, ls(cfg.hLocale, i), j, 0);
 
 				for(int k = 0; k < 2; k++)
 					Lv_InsertItem(hwndDlg, IDC_RESULT, L"0%", j, k + 1);
 			}
 
-			/*
-			ini.write(APP_NAME_SHORT, L"CleanWorkingSet", (IsDlgButtonChecked(hwndDlg, IDC_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
-			ini.write(APP_NAME_SHORT, L"CleanSystemWorkingSet", (IsDlgButtonChecked(hwndDlg, IDC_SYSTEM_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
-			ini.write(APP_NAME_SHORT, L"CleanModifiedPagelist", (IsDlgButtonChecked(hwndDlg, IDC_MODIFIED_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
-			ini.write(APP_NAME_SHORT, L"CleanStandbyPagelist", (IsDlgButtonChecked(hwndDlg, IDC_STANDBY_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
-			
-
-			/*
-			// Init settings
+			// Init region settings
 			CheckDlgButton(hwndDlg, IDC_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
 			CheckDlgButton(hwndDlg, IDC_SYSTEM_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
 			CheckDlgButton(hwndDlg, IDC_MODIFIED_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
 			CheckDlgButton(hwndDlg, IDC_STANDBY_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
-			*/
-			// Indicate NOT Supported Features
+
+			// Indicate unsupported features
 			if(!cfg.bSupportedOS)
 			{
 				EnableWindow(GetDlgItem(hwndDlg, IDC_WORKING_SET_CHK), 0);
@@ -1180,14 +1190,14 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				EnableWindow(GetDlgItem(hwndDlg, IDC_STANDBY_PAGELIST_CHK), 0);
 			}
 
-			// Privilege Indicator
+			// Privilege indicator
 			if(cfg.bUnderUAC)
 				SendDlgItemMessage(hwndDlg, IDC_SWITCH, BCM_SETSHIELD, 0, TRUE); // Windows Vista (and above)
 
 			if(!cfg.bAdminPrivilege && !cfg.bSupportedOS)
 				EnableWindow(GetDlgItem(hwndDlg, IDC_REDUCT), FALSE); // Windows XP
 
-			// Tray Icon
+			// Tray icon
 			MEMORY_USAGE mu = {0};
 
 			nid.cbSize = cfg.bSupportedOS ? sizeof(nid) : NOTIFYICONDATA_V3_SIZE;
@@ -1212,23 +1222,15 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 
-		case WM_CLOSE:
+		case WM_DESTROY:
 		{
-			/*
-			// Save settings
-			ini.write(APP_NAME_SHORT, L"CleanWorkingSet", (IsDlgButtonChecked(hwndDlg, IDC_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
-			ini.write(APP_NAME_SHORT, L"CleanSystemWorkingSet", (IsDlgButtonChecked(hwndDlg, IDC_SYSTEM_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
-			ini.write(APP_NAME_SHORT, L"CleanModifiedPagelist", (IsDlgButtonChecked(hwndDlg, IDC_MODIFIED_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
-			ini.write(APP_NAME_SHORT, L"CleanStandbyPagelist", (IsDlgButtonChecked(hwndDlg, IDC_STANDBY_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
-			*/
-
-			// Destroy Timers
+			// Destroy timers
 			KillTimer(hwndDlg, UID);
 			KillTimer(hwndDlg, UID + 1);
 
-			// Destroy Resources
-			if(cfg.hBold)
-				DeleteObject(cfg.hBold);
+			// Destroy resources
+			if(cfg.hTitleFont)
+				DeleteObject(cfg.hTitleFont);
 
 			if(nid.hIcon)
 				DestroyIcon(nid.hIcon);
@@ -1236,11 +1238,10 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if(cfg.hLocale)
 				FreeLibrary(cfg.hLocale);
 
-			// Destroy Tray
+			// Destroy tray icon
 			if(nid.uID)
 				Shell_NotifyIcon(NIM_DELETE, &nid);
 
-			DestroyWindow(hwndDlg);
 			PostQuitMessage(0);
 
 			break;
@@ -1248,30 +1249,43 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_DRAWITEM:
 		{
-			COLORREF clrBg = COLOR_TRAY_BG, cltText = COLOR_TRAY_TEXT;
-
 			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
 
-			if(lpdis->itemState & ODS_DISABLED)
+			if(lpdis->itemAction == ODA_DRAWENTIRE && (wParam == IDC_TITLE_1 || wParam == IDC_TITLE_2))
 			{
-				clrBg = RGB(234, 234, 234);
-				cltText = RGB(190, 190, 190);
+				DrawTitle(hwndDlg, wParam, lpdis->hDC, &lpdis->rcItem, cfg.hTitleFont);
+
+					/*
+				if(lpdis->itemAction == ODA_DRAWENTIRE)
+				{*/
+				//	HTHEME hTheme = OpenThemeDataEx(hwndDlg, L"WINDOW", 0);
+
+//					GetDlgItemText(hwndDlg, wParam, buffer.GetBuffer(MAX_PATH), MAX_PATH);
+//					buffer.ReleaseBuffer();
+
+				//	DrawThemeBackground(hTheme, lpdis->hDC, WP_HORZTHUMB, HTS_NORMAL, &lpdis->rcItem, &lpdis->rcItem);
+
+				//	CloseThemeData(hTheme);
+				//}
 			}
-			else if(lpdis->itemState & ODS_SELECTED)
+			else if(wParam == IDC_REDUCT)
 			{
-				clrBg = RGB(204, 204, 204);
+				HTHEME hTheme = OpenThemeDataEx(hwndDlg, L"TEXTSTYLE", 0);
+
+				GetDlgItemText(hwndDlg, wParam, buffer.GetBuffer(MAX_PATH), MAX_PATH);
+				buffer.ReleaseBuffer();
+
+				//if(IsThemeBackgroundPartiallyTransparent(hTheme, BP_PUSHBUTTON, iBtnState))
+				//	DrawThemeParentBackground(hwndDlg, lpdis->hDC, &lpdis->rcItem);
+
+				COLORREF clrOld = SetBkColor(lpdis->hDC, GetSysColor(COLOR_BTNFACE));
+				ExtTextOut(lpdis->hDC, 0, 0, ETO_OPAQUE, &lpdis->rcItem, NULL, 0, NULL);
+				SetBkColor(lpdis->hDC, clrOld);
+
+				DrawThemeText(hTheme, lpdis->hDC, TEXT_CONTROLLABEL, lpdis->itemState & ODS_DISABLED ? TS_CONTROLLABEL_DISABLED : TS_CONTROLLABEL_NORMAL, buffer, buffer.GetLength(), DT_CENTER | DT_VCENTER | DT_SINGLELINE, 0, &lpdis->rcItem);
+
+				CloseThemeData(hTheme);
 			}
-
-			COLORREF clrOld = SetBkColor(lpdis->hDC, clrBg);
-			ExtTextOut(lpdis->hDC, 0, 0, ETO_OPAQUE, &lpdis->rcItem, NULL, 0, NULL);
-			SetBkColor(lpdis->hDC, clrOld);
-
-			SetBkMode(lpdis->hDC, TRANSPARENT);
-			SetTextColor(lpdis->hDC, cltText);
-			GetWindowText(lpdis->hwndItem, buffer.GetBuffer(MAX_PATH), MAX_PATH);
-			buffer.ReleaseBuffer();
-
-			DrawTextEx(lpdis->hDC, buffer.GetBuffer(), buffer.GetLength(), &lpdis->rcItem,  DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP, NULL);
 
 			return TRUE;
 		}
@@ -1310,37 +1324,6 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 			switch(lpnmhdr->code)
 			{
-				case LVN_ITEMCHANGED:
-				{
-					LPNMLISTVIEW lpnmlv = (LPNMLISTVIEW)lParam;
-
-					if(lpnmlv->hdr.idFrom == IDC_REGION)
-					{
-						if(!lpnmlv->uNewState && !lpnmlv->uOldState)
-							break;
-
-						// Old checkbox state
-						BOOL bPrevState = ((lpnmlv->uOldState & LVIS_STATEIMAGEMASK) >> 12) - 1;
-
-						if(bPrevState < 0) 
-							bPrevState = 0;
-
-						// New checkbox state
-						BOOL bChecked = ((lpnmlv->uNewState & LVIS_STATEIMAGEMASK) >> 12) - 1;
-						
-						if(bChecked < 0)
-							bChecked = 0; 
-
-						// No changes in checkbox
-						if(bPrevState == bChecked)
-							break;
-
-//						MessageBox(0,MB_TOPMOST, 0, L"%d %d, %s", lpnmlv->uNewState, lpnmlv->iItem, lpnmlv->lParam);
-					}
-
-					break;
-				}
-
 				case NM_CUSTOMDRAW:
 				{
 					LONG dwResult = CDRF_DODEFAULT;
@@ -1476,6 +1459,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					{
 						if(mu.dwPercentPhys >= cfg.uDangerLevel && ini.read(APP_NAME_SHORT, L"BalloonDangerLevel", 1))
 							ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_REDLEVEL));
+
 						else if(mu.dwPercentPhys >= cfg.uWarningLevel && ini.read(APP_NAME_SHORT, L"BalloonWarningLevel", 0))
 							ShowBalloonTip(NIIF_WARNING, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_YELLOWLEVEL));
 					}
@@ -1486,21 +1470,21 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						buffer.Format(L"%d%%", mu.dwPercentPhys);
 
 						Lv_InsertItem(hwndDlg, IDC_MONITOR, buffer, 0, 1, -1, -1, mu.dwPercentPhys);
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFilledPhys, cfg.szUnit), 1, 1, -1, -1, mu.dwPercentPhys);
+						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFreePhys, cfg.szUnit), 1, 1, -1, -1, mu.dwPercentPhys);
 						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullTotalPhys, cfg.szUnit), 2, 1, -1, -1, mu.dwPercentPhys);
 
 						// Page File
 						buffer.Format(L"%d%%", mu.dwPercentPageFile);
 
 						Lv_InsertItem(hwndDlg, IDC_MONITOR, buffer, 3, 1, -1, -1, mu.dwPercentPageFile);
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFilledPageFile, cfg.szUnit), 4, 1, -1, -1, mu.dwPercentPageFile);
+						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFreePageFile, cfg.szUnit), 4, 1, -1, -1, mu.dwPercentPageFile);
 						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullTotalPageFile, cfg.szUnit), 5, 1, -1, -1, mu.dwPercentPageFile);
 
 						// System Cache
 						buffer.Format(L"%d%%", mu.dwPercentSystemWorkingSet);
 
 						Lv_InsertItem(hwndDlg, IDC_MONITOR, buffer, 6, 1, -1, -1, mu.dwPercentSystemWorkingSet);
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFilledSystemWorkingSet, cfg.szUnit), 7, 1, -1, -1, mu.dwPercentSystemWorkingSet);
+						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFreeSystemWorkingSet, cfg.szUnit), 7, 1, -1, -1, mu.dwPercentSystemWorkingSet);
 						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullTotalSystemWorkingSet, cfg.szUnit), 8, 1, -1, -1, mu.dwPercentSystemWorkingSet);
 					}
 
@@ -1550,10 +1534,10 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				case WM_RBUTTONUP:
 				case WM_CONTEXTMENU:
 				{
-					// Load Menu
+					// Load menu
 					HMENU hMenu = LoadMenu(cfg.hLocale, MAKEINTRESOURCE(IDM_TRAY)), hSubMenu = GetSubMenu(hMenu, 0);
 
-					// Set Default Menu Item
+					// Set default menu item
 					if(ini.read(APP_NAME_SHORT, L"OnDoubleClick", 0) == 0)
 						SetMenuDefaultItem(hSubMenu, IDM_TRAY_SHOW, 0);
 
@@ -1575,17 +1559,17 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					if(cfg.bUnderUAC)
 						SetMenuItemShield(hSubMenu, IDM_TRAY_REDUCT, FALSE);
 
-					// Switch Window to Foreground
+					// Switch window to foreground
 					SetForegroundWindow(hwndDlg);
 
-					// Get Cursor Position
+					// Get cursor position
 					POINT pt = {0};
 					GetCursorPos(&pt);
 
-					// Show Menu
+					// Show menu
 					TrackPopupMenuEx(hSubMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_LEFTBUTTON | TPM_NOANIMATION, pt.x, pt.y, hwndDlg, NULL);
 
-					// Destroy Menu
+					// Destroy menu
 					DestroyMenu(hMenu);
 					DestroyMenu(hSubMenu);
 
@@ -1619,7 +1603,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				case IDM_TRAY_EXIT:
 				case IDM_EXIT:
 				{
-					SendMessage(hwndDlg, WM_CLOSE, 0, 0);
+					DestroyWindow(hwndDlg);
 					break;
 				}
 
@@ -1646,27 +1630,46 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						buffer.ReleaseBuffer();
 
 						if(RunElevated(hwndDlg, buffer, L"/restart"))
-						{
-							PostMessage(hwndDlg, WM_CLOSE, 0, 0);
-							return 0;
-						}
+							DestroyWindow(hwndDlg);
+
+						else
+							ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_UAC_WARNING));
+
+						return 0;
 					}
 
 					Switch(hwndDlg);
 					break;
 				}
 
+				case IDC_WORKING_SET_CHK:
+				case IDC_SYSTEM_WORKING_SET_CHK:
+				case IDC_MODIFIED_PAGELIST_CHK:
+				case IDC_STANDBY_PAGELIST_CHK:
+				{
+					if(LOWORD(wParam) == IDC_WORKING_SET_CHK)
+						buffer = L"CleanWorkingSet";
+					
+					else if(LOWORD(wParam) == IDC_SYSTEM_WORKING_SET_CHK)
+						buffer = L"CleanSystemWorkingSet";
+					
+					else if(LOWORD(wParam) == IDC_MODIFIED_PAGELIST_CHK)
+						buffer = L"CleanModifiedPagelist";
+
+					else if(LOWORD(wParam) == IDC_STANDBY_PAGELIST_CHK)
+						buffer = L"CleanStandbyPagelist";
+
+					else
+						return 0;
+
+					ini.write(APP_NAME_SHORT, buffer, (IsDlgButtonChecked(hwndDlg, LOWORD(wParam)) == BST_CHECKED) ? 1 : 0);
+
+					break;
+				}
+
 				case IDC_REDUCT:
 				{
-					// Save settings
-					ini.write(APP_NAME_SHORT, L"CleanWorkingSet", (IsDlgButtonChecked(hwndDlg, IDC_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
-					ini.write(APP_NAME_SHORT, L"CleanSystemWorkingSet", (IsDlgButtonChecked(hwndDlg, IDC_SYSTEM_WORKING_SET_CHK) == BST_CHECKED) ? 1 : 0);
-					ini.write(APP_NAME_SHORT, L"CleanModifiedPagelist", (IsDlgButtonChecked(hwndDlg, IDC_MODIFIED_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
-					ini.write(APP_NAME_SHORT, L"CleanStandbyPagelist", (IsDlgButtonChecked(hwndDlg, IDC_STANDBY_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
-
-					// Start reduction
 					MemReduct(hwndDlg, 0);
-
 					break;
 				}
 				
@@ -1694,7 +1697,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				case IDM_ABOUT:
 				{
 					buffer.Format(ls(cfg.hLocale, IDS_COPYRIGHT), APP_WEBSITE, APP_HOST);
-					AboutBoxCreate(hwndDlg, MAKEINTRESOURCE(IDI_MAIN), ls(cfg.hLocale, IDS_ABOUT), APP_NAME L" " APP_VERSION, L"Copyright © 2013 Henry++\r\nAll Rights Reversed\r\n\r\n" + buffer);
+					AboutBoxCreate(hwndDlg, MAKEINTRESOURCE(IDI_MAIN), ls(cfg.hLocale, IDS_ABOUT), APP_NAME L" " APP_VERSION, L"Copyright © 2013 Henry++\r\nAll Rights Reversed\r\n\r\n" + buffer, L"<a href=\"" APP_WEBSITE L"\">" APP_HOST L"</a>");
 
 					break;
 				}
@@ -1723,7 +1726,7 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 
 	cfg.szCurrentDir = buffer;
 
-	// Generate config path
+	// Generate ini path
 	if(!FileExists((buffer = cfg.szCurrentDir + L"\\" APP_NAME_SHORT + L".cfg")))
 	{
 		ExpandEnvironmentStrings(L"%APPDATA%\\" APP_AUTHOR L"\\" APP_NAME, buffer.GetBuffer(MAX_PATH), MAX_PATH);
@@ -1733,7 +1736,7 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		buffer.Append(+ L"\\" APP_NAME_SHORT L".cfg");
 	}
 
-	// Set config path
+	// Set ini path
 	ini.set_path(buffer);
 
 	// Load language
@@ -1742,6 +1745,32 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	if(FileExists(buffer))
 		cfg.hLocale = LoadLanguage(buffer, APP_VERSION);
 
+	/*
+	time_t start, end;
+	time(&start);
+
+
+
+	for(int i = 0; i < 16000; i++)
+	{
+	//	ini.read(APP_NAME_SHORT, L"LevelDangerClr", COLOR_LEVEL_DANGER);
+
+		HANDLE FileHandle = CreateFile(L"memreduct.cfg", GENERIC_READ, FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+		char data[150] = {0};
+		DWORD dw = 0;
+
+		ReadFile(FileHandle, &data, 149, &dw, NULL);
+
+		//MessageBoxA(0,data,0,0);
+
+	}
+
+	time(&end);
+
+	MessageBox(0,0,0,L"%f", difftime(end, start));
+
+	return 1;
+	*/
 	// Initialize and create window
 	icex.dwSize = sizeof(icex);
 	icex.dwICC = ICC_WIN95_CLASSES | ICC_STANDARD_CLASSES;

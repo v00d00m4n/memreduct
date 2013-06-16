@@ -35,10 +35,10 @@
 // Settings Structure
 struct CONFIG
 {
-	HINSTANCE hLocale; // language module handle
-	HFONT hBold; // bold font for titles
-
 	HWND hWnd; // main window handle
+
+	HINSTANCE hLocale; // language module handle
+	HFONT hTitleFont; // bold font for titles
 
 	CString szCurrentDir; // current dir
 	WCHAR szUnit[16]; // mb OR kb
@@ -51,20 +51,21 @@ struct CONFIG
 	BOOL bColorIndicationTray; // use color indication for tray
 	BOOL bColorIndicationListView; // use color indication for listview
 	BOOL bBalloonShow; // balloon show switch
+	BOOL bTrayChangeBg;
+	BOOL bTrayShowFree;
 
 	UINT uUnitDivider; // divider for unit (kb - 1024, mb - 1048576)
 	UINT uAutoReductPercents; // Auto-Reduct level
 	UINT uWarningLevel; // "warning level" color
 	UINT uDangerLevel; // "danger level" color
 
+	UINT uTrayRegion;
+
 	DWORD dwLastBalloon;
 
 	LOGFONT lf;
 
 	BOOL bSwitch;
-
-	LPWSTR lpszRegions[4];
-	BOOL bRegions[4];
 };
 
 typedef struct _TAB_PAGES
@@ -84,19 +85,19 @@ typedef struct _MEMORY_USAGE
     DWORD dwPercentPhys;
     DWORDLONG ullTotalPhys;
     DWORDLONG ullAvailPhys;
-    DWORDLONG ullFilledPhys;
+    DWORDLONG ullFreePhys;
 	
 	// Page File
     DWORD dwPercentPageFile;
     DWORDLONG ullTotalPageFile;
     DWORDLONG ullAvailPageFile;
-    DWORDLONG ullFilledPageFile;
+    DWORDLONG ullFreePageFile;
 
 	// System Working Set
     DWORD dwPercentSystemWorkingSet;
     DWORDLONG ullTotalSystemWorkingSet;
     DWORDLONG ullAvailSystemWorkingSet;
-    DWORDLONG ullFilledSystemWorkingSet;
+    DWORDLONG ullFreeSystemWorkingSet;
 } MEMORY_USAGE, *LPMEMORY_USAGE;
 
 /***********************************************

@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 30/03/13
+// lastmod: 30/05/13
 
 #ifndef __INI_H__
 #define __INI_H__

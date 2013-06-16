@@ -22,9 +22,8 @@
 // Main Dlg
 #define IDC_MONITOR								100
 #define IDC_RESULT								101
-#define IDC_REGION								102
-#define IDC_REDUCT								103
-#define IDC_SWITCH								104
+#define IDC_REDUCT								102
+#define IDC_SWITCH								103
 
 // Settings Dlg
 #define IDC_TAB									100
@@ -61,23 +60,23 @@
 // Page #4 Dlg
 #define IDC_TRAY_SHOW_BORDER_CHK				122
 #define IDC_TRAY_CHANGE_BACKGROUND_CHK			123
-#define IDC_TRAY_TEXT_CLR_BTN					124
-#define IDC_TRAY_BG_CLR_BTN						1241
-#define IDC_LISTVIEW_TEXT_CLR_BTN				1242
-#define IDC_LEVEL_NORMAL_CLR_BTN						1243
-#define IDC_LEVEL_WARNING_CLR_BTN						1244
-#define IDC_LEVEL_DANGER_CLR_BTN						1245
-
+#define IDC_TRAY_FONT_BTN						124
+#define IDC_TRAY_TEXT_CLR_BTN					125
+#define IDC_TRAY_BG_CLR_BTN						126
+#define IDC_LISTVIEW_TEXT_CLR_BTN				127
+#define IDC_LEVEL_NORMAL_CLR_BTN				128
+#define IDC_LEVEL_WARNING_CLR_BTN				129
+#define IDC_LEVEL_DANGER_CLR_BTN				130
 
 // Page #5 Dlg
-#define IDC_BALLOON_SHOW_CHK					125
-#define IDC_BALLOON_AUTOREDUCT_CHK				126
-#define IDC_BALLOON_WARNING_CHK					127
-#define IDC_BALLOON_DANGER_CHK					128
-#define IDC_BALLOONINTERVAL						129
+#define IDC_BALLOON_SHOW_CHK					131
+#define IDC_BALLOON_AUTOREDUCT_CHK				132
+#define IDC_BALLOON_WARNING_CHK					133
+#define IDC_BALLOON_DANGER_CHK					134
+#define IDC_BALLOONINTERVAL						135
 
 // Page #6 Dlg
-#define IDC_STATISTIC							130
+#define IDC_STATISTIC							136
 
 // Common Controls
 #define IDC_OK									1000
@@ -118,8 +117,8 @@
 #define IDS_MEM_PAGEFILE						10006
 #define IDS_MEM_SYSCACHE						10007
 
-#define IDS_MEM_USED							10008
-#define IDS_MEM_FILL							10009
+#define IDS_MEM_USAGE							10008
+#define IDS_MEM_FREE							10009
 #define IDS_MEM_TOTAL							10010
 
 #define IDS_TRAY_HIDE	                        10011
@@ -135,28 +134,24 @@
 #define IDS_REDUCT_SELECTREGION					10021
 #define IDS_REDUCT_WARNING			            10022
 
-#define IDS_REDUCT_REGION			            10023
-#define IDS_REDUCT_RESULT			            10024
-
-#define IDS_REDUCT_REGION_1			            10025
-#define IDS_REDUCT_REGION_2			            10026
-#define IDS_REDUCT_REGION_3			            10027
-#define IDS_REDUCT_REGION_4			            10028
+#define IDS_REDUCT_REGION_1			            10023
+#define IDS_REDUCT_REGION_2			            10024
+#define IDS_REDUCT_REGION_3			            10025
+#define IDS_REDUCT_REGION_4			            10026
 			
-#define IDS_PAGE_1								10029
-#define IDS_PAGE_2								10030
-#define IDS_PAGE_3								10031
-#define IDS_PAGE_4								10032
-#define IDS_PAGE_5								10033
-#define IDS_PAGE_6								10034
+#define IDS_PAGE_1								10027
+#define IDS_PAGE_2								10028
+#define IDS_PAGE_3								10029
+#define IDS_PAGE_4								10030
+#define IDS_PAGE_5								10031
+#define IDS_PAGE_6								10032
 
-#define IDS_DOUBLECLICK_1						10035
-#define IDS_DOUBLECLICK_2						10036
-#define IDS_DOUBLECLICK_3						10037
-#define IDS_DOUBLECLICK_4						10038
+#define IDS_DOUBLECLICK_1						10033
+#define IDS_DOUBLECLICK_2						10034
+#define IDS_DOUBLECLICK_3						10035
+#define IDS_DOUBLECLICK_4						10036
 
-#define IDS_UAC_WARNING							10039
-#define IDS_TRAY_SHOW_FREE						10040
+#define IDS_UAC_WARNING							10037
 
 // Icons
 #define IDI_MAIN	                            100

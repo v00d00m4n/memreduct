@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 28/04/13
+// lastmod: 30/05/13
 
 #ifndef __ROUTINE_H__
 #define __ROUTINE_H__
@@ -20,6 +20,7 @@
 #include <lm.h>
 #include <atlstr.h>
 #include <strsafe.h>
+#include <vsstyle.h>
 
 // Color Shader
 #ifndef COLOR_SHADE
@@ -69,12 +70,15 @@ VOID ImageList_Add(HIMAGELIST hImgList, LPWSTR lpszIco);
 BOOL UnixTimeToSystemTime(time_t t, SYSTEMTIME* pst);
 time_t SystemTimeToUnixTime(SYSTEMTIME* pst);
 
+HFONT GetTitleFont();
+BOOL DrawTitle(HWND hWnd, INT iDlgItem, HDC hDC, LPRECT lpRc, HFONT hFont);
+
 INT GetWindowDimension(HWND hWnd, INT iVector, BOOL bClientOnly);
 INT MessageBox(HWND hWnd, UINT uType, LPCWSTR lpcszCaption, LPCWSTR lpcszFormat, ...);
 HWND SetDlgItemTooltip(HWND hWnd, INT iCtrlId, CString lpszText);
 INT WmMutexWrapper(HWND hwndDlg, WPARAM wParam, LPARAM lParam);
 
 LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-INT AboutBoxCreate(HWND hParent, LPWSTR lpszIcon, LPCWSTR lpcszTitle, LPCWSTR lpszAppName, LPCWSTR lpcszCopyright);
+INT AboutBoxCreate(HWND hParent, LPWSTR lpszIcon, LPCWSTR lpcszTitle, LPCWSTR lpszAppName, LPCWSTR lpcszCopyright, LPCWSTR lpcszUrl);
 
 #endif // __ROUTINE_H__

@@ -23,7 +23,7 @@
 
 #define UID					1337
 #define WM_TRAYICON			(WM_APP + UID)
-#define PAGE_COUNT			6
+#define PAGE_COUNT			5
 
 #define COLOR_TRAY_TEXT		0xFFFFFF
 #define COLOR_TRAY_BG		0xEF892D
@@ -64,8 +64,6 @@ struct CONFIG
 	DWORD dwLastBalloon;
 
 	LOGFONT lf;
-
-	BOOL bSwitch;
 };
 
 typedef struct _TAB_PAGES

@@ -26,7 +26,7 @@
 INI ini;
 CONFIG cfg = {0};
 CONST INT WM_MUTEX = RegisterWindowMessage(APP_NAME_SHORT);
-TAB_PAGES tab_pages = {{IDS_PAGE_1, IDS_PAGE_2, IDS_PAGE_3, IDS_PAGE_4, IDS_PAGE_5, IDS_PAGE_6}, {IDD_PAGE_1, IDD_PAGE_2, IDD_PAGE_3, IDD_PAGE_4, IDD_PAGE_5, IDD_PAGE_6}, {0}, 0, {0}};
+TAB_PAGES tab_pages = {{IDS_PAGE_1, IDS_PAGE_2, IDS_PAGE_3, IDS_PAGE_4, IDS_PAGE_5}, {IDD_PAGE_1, IDD_PAGE_2, IDD_PAGE_3, IDD_PAGE_4, IDD_PAGE_5}, {0}, 0, {0}};
 NOTIFYICONDATA nid = {0};
 
 // Check for updates
@@ -338,6 +338,84 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 	
 	return 1;
 }
+INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	RECT rc = {0};
+	CString buffer;
+
+	switch(uMsg)
+	{
+		case WM_INITDIALOG:
+		{
+			// Centering by parent
+			CenterDialog(hwndDlg);
+
+			break;
+		}
+		case WM_DRAWITEM:
+		{
+			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
+
+			if(lpdis->itemAction == ODA_DRAWENTIRE && wParam == IDC_TITLE_1)
+			{
+				DrawTitle(hwndDlg, wParam, lpdis->hDC, &lpdis->rcItem, cfg.hTitleFont);
+			}
+
+			return TRUE;
+		}
+
+		case WM_PAINT:
+		{
+			PAINTSTRUCT ps = {0};
+			HDC hDC = BeginPaint(hwndDlg, &ps);
+
+			GetClientRect(hwndDlg, &rc);
+			rc.top = rc.bottom - 43;
+
+			// Instead FillRect
+			COLORREF clrOld = SetBkColor(hDC, GetSysColor(COLOR_BTNFACE));
+			ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
+			SetBkColor(hDC, clrOld);
+
+			// Draw Line
+			for(int i = 0; i < rc.right; i++)
+				SetPixel(hDC, i, rc.top, GetSysColor(COLOR_BTNSHADOW));
+
+			EndPaint(hwndDlg, &ps);
+
+			return 0;
+		}
+
+		case WM_CTLCOLORSTATIC:
+		case WM_CTLCOLORDLG:
+		{
+			return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
+		}
+
+		case WM_COMMAND:
+		{
+			switch(LOWORD(wParam))
+			{
+				case IDC_OK:
+				{
+
+					break;
+				}
+
+				case IDCANCEL: // process Esc key
+				case IDC_CANCEL:
+				{
+					EndDialog(hwndDlg, 0);
+					break;
+				}
+			}
+
+			break;
+		}
+	}
+
+	return 0;
+}
 
 INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -505,28 +583,6 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					SendDlgItemMessage(hwndDlg, IDC_BALLOONINTERVAL, UDM_SETPOS32, 0, ini.read(APP_NAME_SHORT, L"BalloonInterval", 10));
 
 					SendMessage(hwndDlg, WM_COMMAND, MAKELPARAM(IDC_BALLOON_SHOW_CHK, 0), 0);
-
-					break;
-				}
-
-				// STATISTIC
-				case 5:
-				{
-					// Styling
-					Lv_SetStyleEx(hwndDlg, IDC_STATISTIC, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE, TRUE);
-
-					// Columns
-					Lv_InsertColumn(hwndDlg, IDC_STATISTIC, L"", 214, 0, 0);
-					Lv_InsertColumn(hwndDlg, IDC_STATISTIC, L"", 214, 1, 0);
-
-					Lv_InsertGroup(hwndDlg, IDC_STATISTIC, L"Счётчик", 0);
-					Lv_InsertGroup(hwndDlg, IDC_STATISTIC, L"Результаты", 1);
-
-					Lv_InsertItem(hwndDlg, IDC_STATISTIC, L"Всего очисток", 0, 0, -1, 0);
-					Lv_InsertItem(hwndDlg, IDC_STATISTIC, L"Последняя очистка", 1, 0, -1, 0);
-
-					Lv_InsertItem(hwndDlg, IDC_STATISTIC, L"Всего очищено", 2, 0, -1, 1);
-					Lv_InsertItem(hwndDlg, IDC_STATISTIC, L"Последний результат", 3, 0, -1, 1);
 
 					break;
 				}
@@ -1037,24 +1093,6 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 	return 0;
 }
 
-VOID Switch(HWND hWnd)
-{
-	ShowWindow(GetDlgItem(hWnd, IDC_TITLE_1), cfg.bSwitch ? SW_SHOW : SW_HIDE);
-	ShowWindow(GetDlgItem(hWnd, IDC_TITLE_2), cfg.bSwitch ? SW_SHOW : SW_HIDE);
-	ShowWindow(GetDlgItem(hWnd, IDC_WORKING_SET_CHK), cfg.bSwitch ? SW_SHOW : SW_HIDE);
-	ShowWindow(GetDlgItem(hWnd, IDC_SYSTEM_WORKING_SET_CHK), cfg.bSwitch ? SW_SHOW : SW_HIDE);
-	ShowWindow(GetDlgItem(hWnd, IDC_MODIFIED_PAGELIST_CHK), cfg.bSwitch ? SW_SHOW : SW_HIDE);
-	ShowWindow(GetDlgItem(hWnd, IDC_STANDBY_PAGELIST_CHK), cfg.bSwitch ? SW_SHOW : SW_HIDE);
-	ShowWindow(GetDlgItem(hWnd, IDC_RESULT), cfg.bSwitch ? SW_SHOW : SW_HIDE);
-	ShowWindow(GetDlgItem(hWnd, IDC_REDUCT), cfg.bSwitch ? SW_SHOW : SW_HIDE);
-
-	ShowWindow(GetDlgItem(hWnd, IDC_MONITOR), cfg.bSwitch ? SW_HIDE : SW_SHOW);
-
-	SetDlgItemText(hWnd, IDC_SWITCH, cfg.bSwitch ? L"Memory Monitor" : L"Memory Reduction");
-
-	cfg.bSwitch = !cfg.bSwitch;
-}
-
 LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	CString buffer;
@@ -1084,10 +1122,10 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				return 0;
 			}
 
-			// Set window title
-			SetWindowText(hwndDlg, APP_NAME L" " APP_VERSION L" / TEST - DO NOT USE");
+			// Set title
+			SetWindowText(hwndDlg, APP_NAME L" " APP_VERSION);
 
-			// Set window icons
+			// Set icons
 			SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_MAIN), IMAGE_ICON, 32, 32, 0));
 			SendMessage(hwndDlg, WM_SETICON, ICON_SMALL, (LPARAM)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_MAIN), IMAGE_ICON, 16, 16, 0));
 
@@ -1097,7 +1135,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			InsertMenu(hMenu, -1, MF_BYPOSITION | MF_STRING, IDM_ABOUT, ls(cfg.hLocale, IDS_ABOUT));
 
 			// Load settings
-			cfg.hTitleFont = GetTitleFont();
+			cfg.hTitleFont = GetFont();
 			cfg.hWnd = hwndDlg;
 
 			cfg.bSupportedOS = ValidWindowsVersion(6, 0); // if vista (6.0) and later
@@ -1146,53 +1184,25 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 			// Styling
 			Lv_SetStyleEx(hwndDlg, IDC_MONITOR, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE, TRUE);
-			Lv_SetStyleEx(hwndDlg, IDC_RESULT, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE, FALSE);
 
-			// Columns (Monitor)
+			// Insert columns
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 1, LVCFMT_RIGHT);
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 2, LVCFMT_LEFT);
 
-			// Columns (Reduction)
-			for(int i = 0; i < 3; i++)
-				Lv_InsertColumn(hwndDlg, IDC_RESULT, L"", i ? 80 : 161, i, i ? LVCFMT_RIGHT : LVCFMT_LEFT);
-
-			// Groups (Monitor)
+			// Insert groups
 			for(int i = IDS_MEM_PHYSICAL, j = 0; i < (IDS_MEM_SYSCACHE + 1); i++, j++)
 				Lv_InsertGroup(hwndDlg, IDC_MONITOR, ls(cfg.hLocale, i), j);
 			
-			// Items (Monitor)
+			// Insert items
 			for(int i = 0, j = 0; i < 3; i++)
 			{
 				for(int k = IDS_MEM_USAGE; k < (IDS_MEM_TOTAL + 1); k++)
 					Lv_InsertItem(hwndDlg, IDC_MONITOR, ls(cfg.hLocale, k), j++, 0, -1, i);
 			}
 
-			// Items (Reduction)
-			for(int i = IDS_MEM_PHYSICAL, j = 0; i < (IDS_MEM_SYSCACHE + 1); i++, j++)
-			{
-				Lv_InsertItem(hwndDlg, IDC_RESULT, ls(cfg.hLocale, i), j, 0);
-
-				for(int k = 0; k < 2; k++)
-					Lv_InsertItem(hwndDlg, IDC_RESULT, L"0%", j, k + 1);
-			}
-
-			// Init region settings
-			CheckDlgButton(hwndDlg, IDC_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_SYSTEM_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_MODIFIED_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_STANDBY_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
-
-			// Indicate unsupported features
-			if(!cfg.bSupportedOS)
-			{
-				EnableWindow(GetDlgItem(hwndDlg, IDC_WORKING_SET_CHK), 0);
-				EnableWindow(GetDlgItem(hwndDlg, IDC_MODIFIED_PAGELIST_CHK), 0);
-				EnableWindow(GetDlgItem(hwndDlg, IDC_STANDBY_PAGELIST_CHK), 0);
-			}
-
 			// Privilege indicator
 			if(cfg.bUnderUAC)
-				SendDlgItemMessage(hwndDlg, IDC_SWITCH, BCM_SETSHIELD, 0, TRUE); // Windows Vista (and above)
+				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_SETSHIELD, 0, TRUE); // Windows Vista (and above)
 
 			if(!cfg.bAdminPrivilege && !cfg.bSupportedOS)
 				EnableWindow(GetDlgItem(hwndDlg, IDC_REDUCT), FALSE); // Windows XP
@@ -1212,8 +1222,6 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			// Timers
 			SetTimer(hwndDlg, UID, ini.read(APP_NAME_SHORT, L"RefreshRate", 500), NULL);
 			SetTimer(hwndDlg, UID + 1, 500, NULL);
-
-			Switch(hwndDlg);
 
 			// Check Updates
 			if(ini.read(APP_NAME_SHORT, L"CheckUpdateAtStartup", 1))
@@ -1254,19 +1262,6 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if(lpdis->itemAction == ODA_DRAWENTIRE && (wParam == IDC_TITLE_1 || wParam == IDC_TITLE_2))
 			{
 				DrawTitle(hwndDlg, wParam, lpdis->hDC, &lpdis->rcItem, cfg.hTitleFont);
-
-					/*
-				if(lpdis->itemAction == ODA_DRAWENTIRE)
-				{*/
-				//	HTHEME hTheme = OpenThemeDataEx(hwndDlg, L"WINDOW", 0);
-
-//					GetDlgItemText(hwndDlg, wParam, buffer.GetBuffer(MAX_PATH), MAX_PATH);
-//					buffer.ReleaseBuffer();
-
-				//	DrawThemeBackground(hTheme, lpdis->hDC, WP_HORZTHUMB, HTS_NORMAL, &lpdis->rcItem, &lpdis->rcItem);
-
-				//	CloseThemeData(hTheme);
-				//}
 			}
 			else if(wParam == IDC_REDUCT)
 			{
@@ -1582,22 +1577,6 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_COMMAND:
 		{
-			if(HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) != IDC_SWITCH)
-			{
-				BOOL bEnable = 0;
-
-				for(int i = IDC_WORKING_SET_CHK; i < (IDC_STANDBY_PAGELIST_CHK + 1); i++)
-				{
-					if(IsDlgButtonChecked(hwndDlg, i) == BST_CHECKED && IsWindowEnabled(GetDlgItem(hwndDlg, i)))
-					{
-						bEnable = 1;
-						break;
-					}
-				}
-
-				EnableWindow(GetDlgItem(hwndDlg, IDC_REDUCT), bEnable);
-			}
-
 			switch(LOWORD(wParam))
 			{
 				case IDM_TRAY_EXIT:
@@ -1615,14 +1594,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				}
 
 				case IDM_TRAY_REDUCT:
-				{
-					cfg.bSwitch = 1;
-					ToggleVisible(hwndDlg, TRUE);
-
-					// without break
-				}
-
-				case IDC_SWITCH:
+				case IDC_REDUCT:
 				{
 					if(cfg.bUnderUAC)
 					{
@@ -1638,7 +1610,8 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						return 0;
 					}
 
-					Switch(hwndDlg);
+					DialogBox(cfg.hLocale, MAKEINTRESOURCE(IDD_REDUCT), hwndDlg, ReductDlgProc);
+
 					break;
 				}
 
@@ -1667,12 +1640,6 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					break;
 				}
 
-				case IDC_REDUCT:
-				{
-					MemReduct(hwndDlg, 0);
-					break;
-				}
-				
 				case IDM_TRAY_SETTINGS:
 				case IDM_SETTINGS:
 				{

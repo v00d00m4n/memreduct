@@ -724,12 +724,12 @@ time_t SystemTimeToUnixTime(SYSTEMTIME* pst)
 	return (((((LONGLONG)(ft.dwHighDateTime)) << 32) + ft.dwLowDateTime) - 116444736000000000ui64) / 10000000ui64;
 }
 
-// Get font handle styled for title
-HFONT GetTitleFont()
+// Get font handle
+HFONT GetFont(INT iHeight)
 {
 	LOGFONT lf = {0};
 
-	lf.lfHeight = 18;
+	lf.lfHeight = iHeight;
 	StringCchCopy(lf.lfFaceName, 32, L"Tahoma");
 
 	return CreateFontIndirect(&lf);
@@ -740,10 +740,10 @@ BOOL DrawTitle(HWND hWnd, INT iDlgItem, HDC hDC, LPRECT lpRc, HFONT hFont)
 {
 	CString buffer;
 	HFONT hCustomFont = NULL;
-	INT iLength = SendDlgItemMessage(hWnd, iDlgItem, WM_GETTEXTLENGTH, 0, 0) + 2;
+	INT iLength = SendDlgItemMessage(hWnd, iDlgItem, WM_GETTEXTLENGTH, 0, 0) + sizeof(TCHAR);
 
 	if(!hFont)
-		hCustomFont = GetTitleFont();
+		hCustomFont = GetFont();
 
 	SelectObject(hDC, hFont ? hFont : hCustomFont);
 
@@ -751,7 +751,7 @@ BOOL DrawTitle(HWND hWnd, INT iDlgItem, HDC hDC, LPRECT lpRc, HFONT hFont)
 	buffer.ReleaseBuffer();
 
 	SetBkMode(hDC, TRANSPARENT);
-	SetTextColor(hDC, 0x993300);
+	SetTextColor(hDC, 0);
 
 	if(hCustomFont)
 		DeleteObject(hCustomFont);
@@ -836,7 +836,11 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 	{
 		case WM_CREATE:
 		{
-			CenterDialog(hwndDlg); // Centering by parent
+			// Disable parent
+			if(GetParent(hwndDlg))
+				EnableWindow(GetParent(hwndDlg), FALSE);
+
+			CenterDialog(hwndDlg); // centering by parent
 			break;
 		}
 		
@@ -863,23 +867,20 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 		case WM_DESTROY: 
 		{
+			if(GetParent(hwndDlg))
+			{
+				EnableWindow(GetParent(hwndDlg), TRUE);
+				SetActiveWindow(GetParent(hwndDlg));
+			}
+
 			PostQuitMessage(0); 
 			return 0;
 		}
 
 		case WM_CTLCOLORSTATIC:
+		case WM_CTLCOLORDLG:
 		{
 			return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
-		}
-
-		case WM_DRAWITEM:
-		{
-			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
-
-			if(lpdis->itemAction == ODA_DRAWENTIRE && wParam == 100)
-				DrawTitle(hwndDlg, wParam, lpdis->hDC, &lpdis->rcItem, NULL);
-
-			return TRUE;
 		}
 
 		case WM_PAINT:
@@ -933,7 +934,7 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 		case WM_COMMAND:
 		{
-			if(LOWORD(wParam) == 102 || LOWORD(wParam) == IDCANCEL)
+			if(LOWORD(wParam) == 100 || LOWORD(wParam) == IDCANCEL)
 				DestroyWindow(hwndDlg);
 
 			break;
@@ -969,34 +970,29 @@ INT AboutBoxCreate(HWND hParent, LPWSTR lpszIcon, LPCWSTR lpcszTitle, LPCWSTR lp
 			return 0;
 	}
 
-	// Create Window
-	HWND hDlg = CreateWindowEx(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, wcex.lpszClassName, lpcszTitle, WS_VISIBLE | WS_POPUP | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 370, 280, hParent, 0, hInstance, 0);
+	// Create window
+	HWND hDlg = CreateWindowEx(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, wcex.lpszClassName, lpcszTitle, WS_VISIBLE | WS_POPUP | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 370, 270, hParent, 0, hInstance, 0);
 
 	if(!hDlg)
 		return 0;
 
-	// Get Non-Client Metrics
-	NONCLIENTMETRICS ncm = {0};
-	ncm.cbSize = sizeof(ncm);
-
-	SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
-
-	HFONT hFont = CreateFontIndirect(&ncm.lfMessageFont);
+	// Create font
+	HFONT hFont = GetFont(13);
+	HFONT hTitleFont = GetFont();
 
 	HWND hWnd = CreateWindowEx(0, WC_STATIC, 0, WS_VISIBLE | WS_CHILD | SS_ICON, 13, 13, 32, 32, hDlg, 0, hInstance, 0);
 	SendMessage(hWnd, STM_SETICON, (WPARAM)LoadIcon(hInstance, lpszIcon), 0);
 	
-	hWnd = CreateWindowEx(0, WC_STATIC, lpszAppName, WS_VISIBLE | WS_CHILD | WS_GROUP | SS_OWNERDRAW, 56, 13, 287, 32, hDlg, 0, hInstance, 0);
-	SetWindowLongPtr(hWnd, GWL_ID, 100);
-	SendMessage(hWnd, WM_SETFONT, (WPARAM)hFont, TRUE);
+	hWnd = CreateWindowEx(0, WC_STATIC, lpszAppName, WS_VISIBLE | WS_CHILD | WS_GROUP | SS_CENTERIMAGE, 56, 13, 287, 32, hDlg, 0, hInstance, 0);
+	SendMessage(hWnd, WM_SETFONT, (WPARAM)hTitleFont, TRUE);
 	
-	hWnd = CreateWindowEx(0, WC_STATIC, lpcszCopyright, WS_VISIBLE | WS_CHILD | WS_GROUP, 56, 50, 287, 127, hDlg, 0, hInstance, 0);
+	hWnd = CreateWindowEx(0, WC_STATIC, lpcszCopyright, WS_VISIBLE | WS_CHILD | WS_GROUP, 56, 50, 287, 115, hDlg, 0, hInstance, 0);
 	SendMessage(hWnd, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-	hWnd = CreateWindowEx(0, WC_LINK, lpcszUrl, WS_VISIBLE | WS_CHILD | WS_GROUP | LWS_USEVISUALSTYLE, 56, 180, 287, 14, hDlg, 0, hInstance, 0);
+	hWnd = CreateWindowEx(0, WC_LINK, lpcszUrl, WS_VISIBLE | WS_CHILD | WS_GROUP | LWS_USEVISUALSTYLE, 56, 170, 287, 14, hDlg, 0, hInstance, 0);
 	SendMessage(hWnd, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-	hWnd = CreateWindowEx(0, WC_BUTTON, L"OK", WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, GetWindowDimension(hDlg, WIDTH, TRUE) - 80, GetWindowDimension(hDlg, HEIGHT, TRUE) - 33, 70, 23, hDlg, 0, hInstance, 0);
+	hWnd = CreateWindowEx(0, WC_BUTTON, L"OK", WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, GetWindowDimension(hDlg, WIDTH, TRUE) - 80, GetWindowDimension(hDlg, HEIGHT, TRUE) - 33, 70, 23, hDlg, (HMENU)100, hInstance, 0);
 	SendMessage(hWnd, WM_SETFONT, (WPARAM)hFont, TRUE);
 
 	while(GetMessage(&msg, 0, 0, 0))
@@ -1009,6 +1005,7 @@ INT AboutBoxCreate(HWND hParent, LPWSTR lpszIcon, LPCWSTR lpcszTitle, LPCWSTR lp
 	}
 
 	DeleteObject(hFont);
+	DeleteObject(hTitleFont);
 
 	return msg.wParam;
 }

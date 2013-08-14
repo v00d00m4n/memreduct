@@ -70,7 +70,7 @@ VOID ImageList_Add(HIMAGELIST hImgList, LPWSTR lpszIco);
 BOOL UnixTimeToSystemTime(time_t t, SYSTEMTIME* pst);
 time_t SystemTimeToUnixTime(SYSTEMTIME* pst);
 
-HFONT GetTitleFont();
+HFONT GetFont(INT iHeight = 18);
 BOOL DrawTitle(HWND hWnd, INT iDlgItem, HDC hDC, LPRECT lpRc, HFONT hFont);
 
 INT GetWindowDimension(HWND hWnd, INT iVector, BOOL bClientOnly);

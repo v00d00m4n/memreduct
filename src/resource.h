@@ -7,13 +7,14 @@
 
 // Dialogs
 #define IDD_MAIN	                            100
-#define IDD_SETTINGS                            101
-#define IDD_PAGE_1								102
-#define IDD_PAGE_2								103
-#define IDD_PAGE_3								104
-#define IDD_PAGE_4								105
-#define IDD_PAGE_5								106
-#define IDD_PAGE_6								107
+#define IDD_REDUCT	                            101
+#define IDD_SETTINGS                            102
+#define IDD_PAGE_1								103
+#define IDD_PAGE_2								104
+#define IDD_PAGE_3								105
+#define IDD_PAGE_4								106
+#define IDD_PAGE_5								107
+#define IDD_PAGE_6								108
 
 // Menu Id
 #define IDM_MAIN		                        100
@@ -21,9 +22,10 @@
 
 // Main Dlg
 #define IDC_MONITOR								100
-#define IDC_RESULT								101
-#define IDC_REDUCT								102
-#define IDC_SWITCH								103
+#define IDC_REDUCT								101
+
+// Memory Reduction Dlg
+#define IDC_RESULT								100
 
 // Settings Dlg
 #define IDC_TAB									100
@@ -74,9 +76,6 @@
 #define IDC_BALLOON_WARNING_CHK					133
 #define IDC_BALLOON_DANGER_CHK					134
 #define IDC_BALLOONINTERVAL						135
-
-// Page #6 Dlg
-#define IDC_STATISTIC							136
 
 // Common Controls
 #define IDC_OK									1000
@@ -144,7 +143,6 @@
 #define IDS_PAGE_3								10029
 #define IDS_PAGE_4								10030
 #define IDS_PAGE_5								10031
-#define IDS_PAGE_6								10032
 
 #define IDS_DOUBLECLICK_1						10033
 #define IDS_DOUBLECLICK_2						10034

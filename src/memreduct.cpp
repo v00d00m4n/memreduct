@@ -245,7 +245,7 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 		if(cfg.bUnderUAC)
 			ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_UAC_WARNING));
 
-		return 0;
+		return FALSE;
 	}
 
 	// Check settings
@@ -254,14 +254,14 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 		if(!bSilent)
 			MessageBox(hWnd, ls(cfg.hLocale, IDS_REDUCT_SELECTREGION), APP_NAME, MB_OK | MB_ICONSTOP);
 
-		return 0;
+		return FALSE;
 	}
 
 	if(!bSilent && ini.read(APP_NAME_SHORT, L"AskBeforeCleaning", 1))
 		iBuffer = MessageBox(hWnd, ls(cfg.hLocale, IDS_REDUCT_WARNING), APP_NAME, MB_YESNO | MB_ICONQUESTION);
 
 	if(iBuffer != IDYES)
-		return 0;
+		return FALSE;
 
 	// Show difference: BEFORE
 	if(hWnd)
@@ -336,85 +336,7 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 2, 2, -1, -1, lParam);
 	}
 	
-	return 1;
-}
-INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	RECT rc = {0};
-	CString buffer;
-
-	switch(uMsg)
-	{
-		case WM_INITDIALOG:
-		{
-			// Centering by parent
-			CenterDialog(hwndDlg);
-
-			break;
-		}
-		case WM_DRAWITEM:
-		{
-			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
-
-			if(lpdis->itemAction == ODA_DRAWENTIRE && wParam == IDC_TITLE_1)
-			{
-				DrawTitle(hwndDlg, wParam, lpdis->hDC, &lpdis->rcItem, cfg.hTitleFont);
-			}
-
-			return TRUE;
-		}
-
-		case WM_PAINT:
-		{
-			PAINTSTRUCT ps = {0};
-			HDC hDC = BeginPaint(hwndDlg, &ps);
-
-			GetClientRect(hwndDlg, &rc);
-			rc.top = rc.bottom - 43;
-
-			// Instead FillRect
-			COLORREF clrOld = SetBkColor(hDC, GetSysColor(COLOR_BTNFACE));
-			ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
-			SetBkColor(hDC, clrOld);
-
-			// Draw Line
-			for(int i = 0; i < rc.right; i++)
-				SetPixel(hDC, i, rc.top, GetSysColor(COLOR_BTNSHADOW));
-
-			EndPaint(hwndDlg, &ps);
-
-			return 0;
-		}
-
-		case WM_CTLCOLORSTATIC:
-		case WM_CTLCOLORDLG:
-		{
-			return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
-		}
-
-		case WM_COMMAND:
-		{
-			switch(LOWORD(wParam))
-			{
-				case IDC_OK:
-				{
-
-					break;
-				}
-
-				case IDCANCEL: // process Esc key
-				case IDC_CANCEL:
-				{
-					EndDialog(hwndDlg, 0);
-					break;
-				}
-			}
-
-			break;
-		}
-	}
-
-	return 0;
+	return TRUE;
 }
 
 INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -501,7 +423,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 					// Trackbar
 					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETTICFREQ, 5, 0);				 
-					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETRANGE, 1, MAKELPARAM(5, 100));
+					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETRANGE, 1, MAKELPARAM(5, 99));
 					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETPOS, 1, ini.read(APP_NAME_SHORT, L"AutoReductPercents", 90));
 
 					SendMessage(hwndDlg, WM_HSCROLL, MAKELPARAM(SB_THUMBPOSITION, ini.read(APP_NAME_SHORT, L"AutoReductPercents", 90)), 1);
@@ -677,10 +599,10 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 				case NM_CLICK:
 				case NM_RETURN:
 				{
-					PNMLINK nmlink = (PNMLINK)lParam;
+					PNMLINK nmlp = (PNMLINK)lParam;
 
-					if(nmlink->item.szUrl[0])
-						ShellExecute(hwndDlg, 0, nmlink->item.szUrl, 0, 0, SW_SHOW);
+					if(nmlp->item.szUrl[0])
+						ShellExecute(hwndDlg, 0, nmlp->item.szUrl, 0, 0, SW_SHOW);
 
 					break;
 				}
@@ -909,15 +831,15 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 		case WM_NOTIFY:
 		{
-			LPNMHDR lphdr = (LPNMHDR)lParam;
+			LPNMHDR nmlp = (LPNMHDR)lParam;
 
-			switch(lphdr->code)
+			switch(nmlp->code)
 			{
 				case TCN_SELCHANGE:
 				{
-					if(lphdr->idFrom == IDC_TAB)
+					if(nmlp->idFrom == IDC_TAB)
 					{
-						iBuffer = SendDlgItemMessage(hwndDlg, lphdr->idFrom, TCM_GETCURSEL, 0, 0);
+						iBuffer = SendDlgItemMessage(hwndDlg, nmlp->idFrom, TCM_GETCURSEL, 0, 0);
 						ShowWindow(tab_pages.hCurrent, SW_HIDE);
 
 						if(tab_pages.hWnd[iBuffer])
@@ -1076,6 +998,228 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 					}
 
 					// without break
+				}
+
+				case IDCANCEL: // process Esc key
+				case IDC_CANCEL:
+				{
+					EndDialog(hwndDlg, 0);
+					break;
+				}
+			}
+
+			break;
+		}
+	}
+
+	return 0;
+}
+
+INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	RECT rc = {0};
+	CString buffer;
+	INT iBuffer = 0;
+
+	switch(uMsg)
+	{
+		case WM_INITDIALOG:
+		{
+			// Centering by parent
+			CenterDialog(hwndDlg);
+			
+			// Init settings
+			CheckDlgButton(hwndDlg, IDC_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_SYSTEM_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_MODIFIED_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_STANDBY_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
+
+			// Styling
+			Lv_SetStyleEx(hwndDlg, IDC_RESULT, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE);
+
+			// Insert columns
+			GetClientRect(GetDlgItem(hwndDlg, IDC_RESULT), &rc);
+
+			Lv_InsertColumn(hwndDlg, IDC_RESULT, ls(cfg.hLocale, IDS_CLEANER_COL_1), rc.right / 2, 0, 0);
+			Lv_InsertColumn(hwndDlg, IDC_RESULT, ls(cfg.hLocale, IDS_CLEANER_COL_2), rc.right / 4, 1, LVCFMT_RIGHT);
+			Lv_InsertColumn(hwndDlg, IDC_RESULT, ls(cfg.hLocale, IDS_CLEANER_COL_3), rc.right / 4, 2, LVCFMT_RIGHT);
+
+			// Insert items
+			for(int i = IDS_MEM_PHYSICAL, j = 0; i < (IDS_MEM_SYSCACHE + 1); i++, j++)
+			{
+				Lv_InsertItem(hwndDlg, IDC_RESULT, ls(cfg.hLocale, i), j, 0);
+
+				for(int k = 1; k < 3; k++)
+					Lv_InsertItem(hwndDlg, IDC_RESULT, L"0%", j, k);
+			}
+
+			break;
+		}
+		case WM_DRAWITEM:
+		{
+			LPDRAWITEMSTRUCT nmlp = (LPDRAWITEMSTRUCT)lParam;
+
+			if(nmlp->itemAction == ODA_DRAWENTIRE && wParam >= IDC_TITLE_1)
+			{
+				DrawTitle(hwndDlg, wParam, nmlp->hDC, &nmlp->rcItem, cfg.hTitleFont);
+			}
+
+			return TRUE;
+		}
+
+		case WM_PAINT:
+		{
+			PAINTSTRUCT ps = {0};
+			HDC hDC = BeginPaint(hwndDlg, &ps);
+
+			GetClientRect(hwndDlg, &rc);
+			rc.top = rc.bottom - 43;
+
+			// Instead FillRect
+			COLORREF clrOld = SetBkColor(hDC, GetSysColor(COLOR_BTNFACE));
+			ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
+			SetBkColor(hDC, clrOld);
+
+			// Draw Line
+			for(int i = 0; i < rc.right; i++)
+				SetPixel(hDC, i, rc.top, GetSysColor(COLOR_BTNSHADOW));
+
+			EndPaint(hwndDlg, &ps);
+
+			return 0;
+		}
+
+		case WM_CTLCOLORSTATIC:
+		case WM_CTLCOLORDLG:
+		{
+			return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
+		}
+
+		case WM_NOTIFY:
+		{
+			LPNMHDR nmlp = (LPNMHDR)lParam;
+
+			switch(nmlp->code)
+			{
+				case BCN_DROPDOWN:
+				{
+					LPNMBCDROPDOWN nmlp = (LPNMBCDROPDOWN)lParam;
+
+					if(nmlp->hdr.idFrom == IDC_SETTINGS)
+					{
+						// Load menu
+						HMENU hMenu = LoadMenu(cfg.hLocale, MAKEINTRESOURCE(IDM_REDUCT)), hSubMenu = GetSubMenu(hMenu, 0);
+
+						// Check items
+						CheckMenuItem(hSubMenu, IDC_WORKING_SET_CHK, (ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) ? MF_CHECKED : MF_UNCHECKED) | MF_BYCOMMAND);
+						CheckMenuItem(hSubMenu, IDC_SYSTEM_WORKING_SET_CHK, (ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) ? MF_CHECKED : MF_UNCHECKED) | MF_BYCOMMAND);
+						CheckMenuItem(hSubMenu, IDC_MODIFIED_PAGELIST_CHK, (ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) ? MF_CHECKED : MF_UNCHECKED) | MF_BYCOMMAND);
+						CheckMenuItem(hSubMenu, IDC_STANDBY_PAGELIST_CHK, (ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0) ? MF_CHECKED : MF_UNCHECKED) | MF_BYCOMMAND);
+
+						// Get cursor position
+						POINT pt = {0};
+						GetCursorPos(&pt);
+
+						// Show menu
+						TrackPopupMenuEx(hSubMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_LEFTBUTTON | TPM_NOANIMATION, pt.x, pt.y, hwndDlg, NULL);
+
+						// Destroy menu
+						DestroyMenu(hMenu);
+						DestroyMenu(hSubMenu);
+					}
+
+					break;
+				}
+
+				case NM_CUSTOMDRAW:
+				{
+					LPNMLVCUSTOMDRAW nmlp = (LPNMLVCUSTOMDRAW)lParam;
+					LONG lResult = CDRF_DODEFAULT;
+
+					switch(nmlp->nmcd.dwDrawStage)
+					{
+						case CDDS_PREPAINT:
+						{
+							lResult |= CDRF_NOTIFYITEMDRAW;
+							break;
+						}
+
+						case CDDS_ITEMPREPAINT:
+						{
+							lResult |= CDRF_NOTIFYSUBITEMDRAW;
+							break;
+						}
+
+						case CDDS_SUBITEM | CDDS_ITEMPREPAINT:
+						{
+							if(nmlp->iSubItem)
+							{
+								nmlp->clrText = ini.read(APP_NAME_SHORT, L"ListViewTextClr", COLOR_LISTVIEW_TEXT);
+
+								if(nmlp->nmcd.lItemlParam)
+								{
+									if(nmlp->iSubItem == 2 && LOWORD(nmlp->nmcd.lItemlParam) > HIWORD(nmlp->nmcd.lItemlParam))
+										nmlp->clrText = ini.read(APP_NAME_SHORT, L"LevelNormalClr", COLOR_LEVEL_NORMAL);
+								}
+
+								lResult = CDRF_NEWFONT;
+							}
+
+							break;
+						}
+					}
+
+					SetWindowLong(hwndDlg, DWL_MSGRESULT, lResult);
+					return 1;
+				}
+			}
+
+			break;
+		}
+
+		case WM_COMMAND:
+		{
+			switch(LOWORD(wParam))
+			{
+				case IDC_SETTINGS:
+				{
+					DialogBox(cfg.hLocale, MAKEINTRESOURCE(IDD_SETTINGS), hwndDlg, SettingsDlgProc);
+					break;
+				}
+
+				case IDC_WORKING_SET_CHK:
+				case IDC_SYSTEM_WORKING_SET_CHK:
+				case IDC_MODIFIED_PAGELIST_CHK:
+				case IDC_STANDBY_PAGELIST_CHK:
+				{
+					if(LOWORD(wParam) == IDC_WORKING_SET_CHK)
+						buffer = L"CleanWorkingSet";
+
+					else if(LOWORD(wParam) == IDC_SYSTEM_WORKING_SET_CHK)
+						buffer = L"CleanSystemWorkingSet";
+
+					else if(LOWORD(wParam) == IDC_MODIFIED_PAGELIST_CHK)
+						buffer = L"CleanModifiedPagelist";
+
+					else if(LOWORD(wParam) == IDC_STANDBY_PAGELIST_CHK)
+						buffer = L"CleanStandbyPagelist";
+
+					else
+						return 0;
+
+					ini.write(APP_NAME_SHORT, buffer, !ini.read(APP_NAME_SHORT, buffer, 0));
+
+					EnableWindow(GetDlgItem(hwndDlg, IDC_OK), TRUE);
+
+					break;
+				}
+
+				case IDC_OK:
+				{
+					if(MemReduct(hwndDlg, 0))
+						EnableWindow(GetDlgItem(hwndDlg, IDC_OK), FALSE);
+
+					break;
 				}
 
 				case IDCANCEL: // process Esc key
@@ -1257,11 +1401,11 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_DRAWITEM:
 		{
-			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
+			LPDRAWITEMSTRUCT nmlp = (LPDRAWITEMSTRUCT)lParam;
 
-			if(lpdis->itemAction == ODA_DRAWENTIRE && (wParam == IDC_TITLE_1 || wParam == IDC_TITLE_2))
+			if(nmlp->itemAction == ODA_DRAWENTIRE && (wParam == IDC_TITLE_1 || wParam == IDC_TITLE_2))
 			{
-				DrawTitle(hwndDlg, wParam, lpdis->hDC, &lpdis->rcItem, cfg.hTitleFont);
+				DrawTitle(hwndDlg, wParam, nmlp->hDC, &nmlp->rcItem, cfg.hTitleFont);
 			}
 			else if(wParam == IDC_REDUCT)
 			{
@@ -1271,13 +1415,13 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				buffer.ReleaseBuffer();
 
 				//if(IsThemeBackgroundPartiallyTransparent(hTheme, BP_PUSHBUTTON, iBtnState))
-				//	DrawThemeParentBackground(hwndDlg, lpdis->hDC, &lpdis->rcItem);
+				//	DrawThemeParentBackground(hwndDlg, nmlp->hDC, &nmlp->rcItem);
 
-				COLORREF clrOld = SetBkColor(lpdis->hDC, GetSysColor(COLOR_BTNFACE));
-				ExtTextOut(lpdis->hDC, 0, 0, ETO_OPAQUE, &lpdis->rcItem, NULL, 0, NULL);
-				SetBkColor(lpdis->hDC, clrOld);
+				COLORREF clrOld = SetBkColor(nmlp->hDC, GetSysColor(COLOR_BTNFACE));
+				ExtTextOut(nmlp->hDC, 0, 0, ETO_OPAQUE, &nmlp->rcItem, NULL, 0, NULL);
+				SetBkColor(nmlp->hDC, clrOld);
 
-				DrawThemeText(hTheme, lpdis->hDC, TEXT_CONTROLLABEL, lpdis->itemState & ODS_DISABLED ? TS_CONTROLLABEL_DISABLED : TS_CONTROLLABEL_NORMAL, buffer, buffer.GetLength(), DT_CENTER | DT_VCENTER | DT_SINGLELINE, 0, &lpdis->rcItem);
+				DrawThemeText(hTheme, nmlp->hDC, TEXT_CONTROLLABEL, nmlp->itemState & ODS_DISABLED ? TS_CONTROLLABEL_DISABLED : TS_CONTROLLABEL_NORMAL, buffer, buffer.GetLength(), DT_CENTER | DT_VCENTER | DT_SINGLELINE, 0, &nmlp->rcItem);
 
 				CloseThemeData(hTheme);
 			}
@@ -1315,9 +1459,9 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_NOTIFY:
 		{
-			LPNMHDR lpnmhdr = (LPNMHDR)lParam;
+			LPNMHDR nmlp = (LPNMHDR)lParam;
 
-			switch(lpnmhdr->code)
+			switch(nmlp->code)
 			{
 				case NM_CUSTOMDRAW:
 				{

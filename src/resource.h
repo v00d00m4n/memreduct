@@ -19,6 +19,7 @@
 // Menu Id
 #define IDM_MAIN		                        100
 #define IDM_TRAY		                        101
+#define IDM_REDUCT		                        102
 
 // Main Dlg
 #define IDC_MONITOR								100
@@ -26,6 +27,7 @@
 
 // Memory Reduction Dlg
 #define IDC_RESULT								100
+#define IDC_SETTINGS							101
 
 // Settings Dlg
 #define IDC_TAB									100
@@ -150,6 +152,10 @@
 #define IDS_DOUBLECLICK_4						10036
 
 #define IDS_UAC_WARNING							10037
+
+#define IDS_CLEANER_COL_1						10038
+#define IDS_CLEANER_COL_2						10039
+#define IDS_CLEANER_COL_3						10040
 
 // Icons
 #define IDI_MAIN	                            100

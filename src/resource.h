@@ -153,10 +153,6 @@
 
 #define IDS_UAC_WARNING							10037
 
-#define IDS_CLEANER_COL_1						10038
-#define IDS_CLEANER_COL_2						10039
-#define IDS_CLEANER_COL_3						10040
-
 // Icons
 #define IDI_MAIN	                            100
 

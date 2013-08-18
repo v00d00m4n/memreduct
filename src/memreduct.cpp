@@ -91,6 +91,8 @@ UINT WINAPI CheckUpdates(LPVOID lpParam)
 // Get memory usage
 DWORD GetMemoryUsage(LPMEMORY_USAGE lpmu)
 {
+	INT iBuffer = 0;
+
 	MEMORYSTATUSEX msex = {0};
 	msex.dwLength = sizeof(msex);
 
@@ -120,11 +122,13 @@ DWORD GetMemoryUsage(LPMEMORY_USAGE lpmu)
 	}
 
 	// Return percents
-	if(cfg.uTrayRegion == 1)
+	iBuffer =  ini.read(APP_NAME_SHORT, L"TrayMemoryRegion", 0);
+
+	if(iBuffer == 1)
 		return lpmu->dwPercentPageFile;
 
-	else if(cfg.uTrayRegion == 1)
-			return lpmu->dwPercentSystemWorkingSet;
+	else if(iBuffer == 2)
+		return lpmu->dwPercentSystemWorkingSet;
 
 	return lpmu->dwPercentPhys;
 }
@@ -163,16 +167,22 @@ HICON CreateMemIcon(DWORD dwData)
 	CString buffer;
 	RECT rc = {0, 0, 16, 16}; // icon rect
 
-	// Initialize colors
-	COLORREF clrTextColor = ini.read(APP_NAME_SHORT, L"TrayTextClr", COLOR_TRAY_TEXT), clrIndicator = NULL;
+	// Settings
+	COLORREF clrTrayBackground = ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", COLOR_TRAY_BG);
+	COLORREF clrTrayText = ini.read(APP_NAME_SHORT, L"TrayTextClr", COLOR_TRAY_TEXT);
+	COLORREF clrIndicator = NULL;
 
-	if(cfg.bColorIndicationTray)
+	BOOL bTrayChangeBg = ini.read(APP_NAME_SHORT, L"TrayChangeBackground", 1);
+	BOOL bTrayShowBorder = ini.read(APP_NAME_SHORT, L"TrayShowBorder", 0);
+	BOOL bTrayShowFree = ini.read(APP_NAME_SHORT, L"TrayShowFree", 0);
+
+	if(ini.read(APP_NAME_SHORT, L"ColorIndicationTray", 1))
 	{
 		if(dwData >= cfg.uDangerLevel)
 			clrIndicator = ini.read(APP_NAME_SHORT, L"LevelDangerClr", COLOR_LEVEL_DANGER);
 
 		else if(dwData >= cfg.uWarningLevel)
-			clrIndicator = ini.read(APP_NAME_SHORT, L"LevelWarningClr", COLOR_LEVEL_WARNING);;
+			clrIndicator = ini.read(APP_NAME_SHORT, L"LevelWarningClr", COLOR_LEVEL_WARNING);
 	}
 
 	// Create bitmap
@@ -185,7 +195,7 @@ HICON CreateMemIcon(DWORD dwData)
     HBITMAP hOldBitMap = (HBITMAP)SelectObject(hCompatibleDC, hBitmap);
 
 	// Fill rectangle
-	COLORREF clrOld = SetBkColor(hCompatibleDC, cfg.bTrayChangeBg && clrIndicator ? clrIndicator : ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", COLOR_TRAY_BG));
+	COLORREF clrOld = SetBkColor(hCompatibleDC, (bTrayChangeBg && clrIndicator) ? clrIndicator : clrTrayBackground);
 	ExtTextOut(hCompatibleDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
 	SetBkColor(hCompatibleDC, clrOld);
 
@@ -194,16 +204,16 @@ HICON CreateMemIcon(DWORD dwData)
 	SelectObject(hCompatibleDC, hTrayFont);
 
 	// Draw text
-	SetTextColor(hCompatibleDC, !cfg.bTrayChangeBg && clrIndicator ? clrIndicator : clrTextColor);
+	SetTextColor(hCompatibleDC, !bTrayChangeBg && clrIndicator ? clrIndicator : clrTrayText);
 	SetBkMode(hCompatibleDC, TRANSPARENT);
 
-	buffer.Format(L"%d\0", cfg.bTrayShowFree ? 100 - dwData : dwData);
-	DrawTextEx(hCompatibleDC, buffer.GetBuffer(), buffer.GetLength(), &rc,  DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP, NULL);
+	buffer.Format(L"%d\0", bTrayShowFree ? 100 - dwData : dwData);
+	DrawTextEx(hCompatibleDC, buffer.GetBuffer(), buffer.GetLength(), &rc, DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOCLIP, NULL);
 
 	// Draw border
-	if(ini.read(APP_NAME_SHORT, L"TrayShowBorder", 0))
+	if(bTrayShowBorder)
 	{
-		HBRUSH hBrush = CreateSolidBrush(!cfg.bTrayChangeBg && clrIndicator ? clrIndicator : clrTextColor);
+		HBRUSH hBrush = CreateSolidBrush(!bTrayChangeBg && clrIndicator ? clrIndicator : clrTrayText);
 		HRGN hRgn = CreateRectRgnIndirect(&rc);
 		FrameRgn(hCompatibleDC, hRgn, hBrush, 1, 1);
 
@@ -426,7 +436,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETRANGE, 1, MAKELPARAM(5, 99));
 					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETPOS, 1, ini.read(APP_NAME_SHORT, L"AutoReductPercents", 90));
 
-					SendMessage(hwndDlg, WM_HSCROLL, MAKELPARAM(SB_THUMBPOSITION, ini.read(APP_NAME_SHORT, L"AutoReductPercents", 90)), 1);
+					SendMessage(hwndDlg, WM_HSCROLL, MAKELPARAM(SB_ENDSCROLL, 0), 1);
 					SendMessage(hwndDlg, WM_COMMAND, MAKELPARAM(IDC_AUTOREDUCT_CHK, 0), 0);
 
 					// Indicate unsupported features
@@ -609,7 +619,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 				case UDN_DELTAPOS:
 				{
-					EnableWindow(GetDlgItem(GetParent(hwndDlg), IDC_APPLY), 1);
+					EnableWindow(GetDlgItem(GetParent(hwndDlg), IDC_APPLY), TRUE);
 					break;
 				}
 			}
@@ -620,13 +630,13 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		case WM_HSCROLL:
 		case WM_VSCROLL:
 		{
-			if(GetDlgItem(hwndDlg, IDC_AUTOREDUCT_TB) && LOWORD(wParam) == SB_THUMBPOSITION)
+			if(GetDlgItem(hwndDlg, IDC_AUTOREDUCT_TB) && LOWORD(wParam) == SB_ENDSCROLL)
 			{
-				buffer.Format(L"%d%%", HIWORD(wParam));
+				buffer.Format(L"%d%%", SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_GETPOS, 0, 0));
 				SetDlgItemText(hwndDlg, IDC_AUTOREDUCT_PERCENT, buffer);
 
-				if(!lParam)
-					EnableWindow(GetDlgItem(GetParent(hwndDlg), IDC_APPLY), 1);
+				if(lParam != 1)
+					EnableWindow(GetDlgItem(GetParent(hwndDlg), IDC_APPLY), TRUE);
 			}
 
 			break;
@@ -635,7 +645,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		case WM_COMMAND:
 		{
 			if(lParam && (HIWORD(wParam) == BN_CLICKED || HIWORD(wParam) == EN_CHANGE || HIWORD(wParam) == CBN_SELENDOK))
-				EnableWindow(GetDlgItem(GetParent(hwndDlg), IDC_APPLY), 1);
+				EnableWindow(GetDlgItem(GetParent(hwndDlg), IDC_APPLY), TRUE);
 
 			if(HIWORD(wParam) == CBN_SELENDOK && LOWORD(wParam) == IDC_LANGUAGE_CB)
 			{
@@ -883,11 +893,8 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						SetWindowPos(cfg.hWnd, (iBuffer ? HWND_TOPMOST : HWND_NOTOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
 						// Color indication
-						cfg.bColorIndicationTray = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_COLOR_INDICATION_TRAY_CHK) == BST_CHECKED);
-						ini.write(APP_NAME_SHORT, L"ColorIndicationTray", cfg.bColorIndicationTray);
-
-						cfg.bColorIndicationListView = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_COLOR_INDICATION_LISTVIEW_CHK) == BST_CHECKED);
-						ini.write(APP_NAME_SHORT, L"ColorIndicationListview", cfg.bColorIndicationListView);
+						ini.write(APP_NAME_SHORT, L"ColorIndicationTray", (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_COLOR_INDICATION_TRAY_CHK) == BST_CHECKED));
+						ini.write(APP_NAME_SHORT, L"ColorIndicationListview", (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_COLOR_INDICATION_LISTVIEW_CHK) == BST_CHECKED));
 
 						// Language
 						iBuffer = SendDlgItemMessage(tab_pages.hWnd[0], IDC_LANGUAGE_CB, CB_GETCURSEL, 0, 0);
@@ -959,29 +966,24 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						ini.write(APP_NAME_SHORT, L"OnDoubleClick", SendDlgItemMessage(tab_pages.hWnd[2], IDC_DOUBLECLICK_CB, CB_GETCURSEL, 0, 0));
 
 						// Tray displayed memory region
-						cfg.uTrayRegion = SendDlgItemMessage(tab_pages.hWnd[2], IDC_TRAYMEMORYREGION_CB, CB_GETCURSEL, 0, 0);
-						ini.write(APP_NAME_SHORT, L"TrayMemoryRegion", cfg.uTrayRegion);
+						ini.write(APP_NAME_SHORT, L"TrayMemoryRegion", SendDlgItemMessage(tab_pages.hWnd[2], IDC_TRAYMEMORYREGION_CB, CB_GETCURSEL, 0, 0));
 
 						// Show "Free"
-						cfg.bTrayShowFree = (IsDlgButtonChecked(tab_pages.hWnd[2], IDC_TRAYSHOWFREE_CHK) == BST_CHECKED) ? 1 : 0;
-						ini.write(APP_NAME_SHORT, L"TrayShowFree", cfg.bTrayShowFree);
+						ini.write(APP_NAME_SHORT, L"TrayShowFree", (IsDlgButtonChecked(tab_pages.hWnd[2], IDC_TRAYSHOWFREE_CHK) == BST_CHECKED) ? 1 : 0);
 					}
 
 					// APPEARANCE
 					if(tab_pages.hWnd[3])
 					{
 						ini.write(APP_NAME_SHORT, L"TrayShowBorder", (IsDlgButtonChecked(tab_pages.hWnd[3], IDC_TRAY_SHOW_BORDER_CHK) == BST_CHECKED));
-
-						cfg.bTrayChangeBg = IsDlgButtonChecked(tab_pages.hWnd[3], IDC_TRAY_CHANGE_BACKGROUND_CHK) == BST_CHECKED;
-						ini.write(APP_NAME_SHORT, L"TrayChangeBackground", cfg.bTrayChangeBg);
+						ini.write(APP_NAME_SHORT, L"TrayChangeBackground", IsDlgButtonChecked(tab_pages.hWnd[3], IDC_TRAY_CHANGE_BACKGROUND_CHK) == BST_CHECKED);
 					}
 
 					// BALLOON
 					if(tab_pages.hWnd[4])
 					{
 						// Balloon's Chk
-						cfg.bBalloonShow = (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_SHOW_CHK) == BST_CHECKED);
-						ini.write(APP_NAME_SHORT, L"BalloonShow", cfg.bBalloonShow);
+						ini.write(APP_NAME_SHORT, L"BalloonShow", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_SHOW_CHK) == BST_CHECKED));
 
 						ini.write(APP_NAME_SHORT, L"BalloonAutoReduct", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_AUTOREDUCT_CHK) == BST_CHECKED));
 						ini.write(APP_NAME_SHORT, L"BalloonWarningLevel", (IsDlgButtonChecked(tab_pages.hWnd[4], IDC_BALLOON_WARNING_CHK) == BST_CHECKED));
@@ -1027,22 +1029,15 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 		{
 			// Centering by parent
 			CenterDialog(hwndDlg);
-			
-			// Init settings
-			CheckDlgButton(hwndDlg, IDC_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_SYSTEM_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_MODIFIED_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_STANDBY_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
 
-			// Styling
+			// Set style
 			Lv_SetStyleEx(hwndDlg, IDC_RESULT, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_DOUBLEBUFFER, TRUE);
 
 			// Insert columns
 			GetClientRect(GetDlgItem(hwndDlg, IDC_RESULT), &rc);
 
-			Lv_InsertColumn(hwndDlg, IDC_RESULT, ls(cfg.hLocale, IDS_CLEANER_COL_1), rc.right / 2, 0, 0);
-			Lv_InsertColumn(hwndDlg, IDC_RESULT, ls(cfg.hLocale, IDS_CLEANER_COL_2), rc.right / 4, 1, LVCFMT_RIGHT);
-			Lv_InsertColumn(hwndDlg, IDC_RESULT, ls(cfg.hLocale, IDS_CLEANER_COL_3), rc.right / 4, 2, LVCFMT_RIGHT);
+			for (int i = 0; i < 3; i++)
+				Lv_InsertColumn(hwndDlg, IDC_RESULT, L"", rc.right / (i == 0 ? 2 : 4), i, 0);
 
 			// Insert items
 			for(int i = IDS_MEM_PHYSICAL, j = 0; i < (IDS_MEM_SYSCACHE + 1); i++, j++)
@@ -1055,14 +1050,13 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 			break;
 		}
+
 		case WM_DRAWITEM:
 		{
 			LPDRAWITEMSTRUCT nmlp = (LPDRAWITEMSTRUCT)lParam;
 
 			if(nmlp->itemAction == ODA_DRAWENTIRE && wParam >= IDC_TITLE_1)
-			{
 				DrawTitle(hwndDlg, wParam, nmlp->hDC, &nmlp->rcItem, cfg.hTitleFont);
-			}
 
 			return TRUE;
 		}
@@ -1216,7 +1210,7 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 				case IDC_OK:
 				{
-					if(MemReduct(hwndDlg, 0))
+					if(MemReduct(hwndDlg, FALSE))
 						EnableWindow(GetDlgItem(hwndDlg, IDC_OK), FALSE);
 
 					break;
@@ -1286,20 +1280,11 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			cfg.bAdminPrivilege = IsAdmin(); // if user has admin rights
 			cfg.bUnderUAC = IsUnderUAC(); // if running under UAC
 
-			cfg.bColorIndicationTray = ini.read(APP_NAME_SHORT, L"ColorIndicationTray", 1);
-			cfg.bColorIndicationListView = ini.read(APP_NAME_SHORT, L"ColorIndicationListView", 1);
-			cfg.bTrayChangeBg = ini.read(APP_NAME_SHORT, L"TrayChangeBackground", 1);
-			cfg.bTrayShowFree = ini.read(APP_NAME_SHORT, L"TrayShowFree", 0);
-
 			cfg.uWarningLevel = ini.read(APP_NAME_SHORT, L"WarningLevel", 60);
 			cfg.uDangerLevel = ini.read(APP_NAME_SHORT, L"DangerLevel", 90);
 
 			cfg.bAutoReduct = ini.read(APP_NAME_SHORT, L"AutoReduct", 0);
 			cfg.uAutoReductPercents = ini.read(APP_NAME_SHORT, L"AutoReductPercents", 90);
-
-			cfg.uTrayRegion = ini.read(APP_NAME_SHORT, L"TrayMemoryRegion", 0);
-
-			cfg.bBalloonShow = ini.read(APP_NAME_SHORT, L"BalloonShow", 1);
 
 			iBuffer = ini.read(APP_NAME_SHORT, L"ShowAsKilobyte", 0);
 			cfg.uUnitDivider = iBuffer ? 1024 : 1048576;
@@ -1486,10 +1471,12 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						{
 							if(lpnmlv->nmcd.hdr.idFrom == IDC_MONITOR && lpnmlv->iSubItem == 1)
 							{
-								if(cfg.bColorIndicationListView && (UINT)lpnmlv->nmcd.lItemlParam >= cfg.uDangerLevel)
+								iBuffer = ini.read(APP_NAME_SHORT, L"ColorIndicationListView", 1);
+
+								if(iBuffer && (UINT)lpnmlv->nmcd.lItemlParam >= cfg.uDangerLevel)
 									lpnmlv->clrText = ini.read(APP_NAME_SHORT, L"LevelDangerClr", COLOR_LEVEL_DANGER);
 
-								else if(cfg.bColorIndicationListView && (UINT)lpnmlv->nmcd.lItemlParam >= cfg.uWarningLevel)
+								else if(iBuffer && (UINT)lpnmlv->nmcd.lItemlParam >= cfg.uWarningLevel)
 									lpnmlv->clrText = ini.read(APP_NAME_SHORT, L"LevelWarningClr", COLOR_LEVEL_WARNING);
 
 								else
@@ -1571,7 +1558,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					nid.uFlags = NIF_ICON | NIF_TIP;
 					StringCchPrintf(nid.szTip, _countof(nid.szTip), ls(cfg.hLocale, IDS_TRAY_TOOLTIP), mu.dwPercentPhys, mu.dwPercentPageFile, mu.dwPercentSystemWorkingSet);
 					nid.hIcon = CreateMemIcon(iBuffer);
-				
+
 					Shell_NotifyIcon(NIM_MODIFY, &nid);
 
 					break;
@@ -1579,12 +1566,14 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 				case UID + 1:
 				{
+					iBuffer = ini.read(APP_NAME_SHORT, L"BalloonShow", 1);
+
 					// Auto-Reduct Option
 					if(cfg.bAdminPrivilege && cfg.bAutoReduct && mu.dwPercentPhys >= cfg.uAutoReductPercents)
 					{
-						MemReduct(0, 1);
+						MemReduct(NULL, TRUE);
 
-						if(cfg.bBalloonShow && ini.read(APP_NAME_SHORT, L"BalloonAutoReduct", 1))
+						if(iBuffer && ini.read(APP_NAME_SHORT, L"BalloonAutoReduct", 1))
 						{
 							GetMemoryUsage(&mu);
 
@@ -1594,7 +1583,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					}
 
 					// Show Balloon Tips
-					if(cfg.bBalloonShow)
+					if(iBuffer)
 					{
 						if(mu.dwPercentPhys >= cfg.uDangerLevel && ini.read(APP_NAME_SHORT, L"BalloonDangerLevel", 1))
 							ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_REDLEVEL));
@@ -1656,7 +1645,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 						case 3:
 						{
-							MemReduct(hwndDlg, 0);
+							MemReduct(hwndDlg, FALSE);
 							break;
 						}
 

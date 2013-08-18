@@ -38,28 +38,22 @@ struct CONFIG
 	HWND hWnd; // main window handle
 
 	HINSTANCE hLocale; // language module handle
-	HFONT hTitleFont; // bold font for titles
+	HFONT hTitleFont; // font for titles
 
 	CString szCurrentDir; // current dir
-	WCHAR szUnit[16]; // mb OR kb
 
 	BOOL bAdminPrivilege; // if admin rights
 	BOOL bUnderUAC; // if running under UAC
 	BOOL bSupportedOS; // if running on Vista or above (6.0)
 
 	BOOL bAutoReduct; // use Auto-Reduct
-	BOOL bColorIndicationTray; // use color indication for tray
-	BOOL bColorIndicationListView; // use color indication for listview
-	BOOL bBalloonShow; // balloon show switch
-	BOOL bTrayChangeBg;
-	BOOL bTrayShowFree;
-
-	UINT uUnitDivider; // divider for unit (kb - 1024, mb - 1048576)
 	UINT uAutoReductPercents; // Auto-Reduct level
+
+	WCHAR szUnit[16]; // mb OR kb
+	UINT uUnitDivider; // divider for unit (kb - 1024, mb - 1048576)
+
 	UINT uWarningLevel; // "warning level" color
 	UINT uDangerLevel; // "danger level" color
-
-	UINT uTrayRegion;
 
 	DWORD dwLastBalloon;
 

@@ -349,6 +349,35 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 	return TRUE;
 }
 
+// Redraw main window resources
+BOOL RedrawMainWindow()
+{
+	// Menu
+	HMENU hMenu = LoadMenu(cfg.hLocale, MAKEINTRESOURCE(IDM_MAIN));
+	SetMenu(cfg.hWnd, hMenu);
+	DrawMenuBar(cfg.hWnd);
+
+	// Clear listview
+	SendDlgItemMessage(cfg.hWnd, IDC_MONITOR, LVM_DELETEALLITEMS, 0, 0);
+	SendDlgItemMessage(cfg.hWnd, IDC_MONITOR, LVM_REMOVEALLGROUPS, 0, 0);
+
+	// Insert listview groups
+	for(int i = IDS_MEM_PHYSICAL, j = 0; i < (IDS_MEM_SYSCACHE + 1); i++, j++)
+		Lv_InsertGroup(cfg.hWnd, IDC_MONITOR, ls(cfg.hLocale, i), j);
+
+	// Insert listview items
+	for(int i = 0, j = 0; i < 3; i++)
+	{
+		for(int k = IDS_MEM_USAGE; k < (IDS_MEM_TOTAL + 1); k++)
+			Lv_InsertItem(cfg.hWnd, IDC_MONITOR, ls(cfg.hLocale, k), j++, 0, -1, i);
+	}
+
+	// Button
+	SetDlgItemText(cfg.hWnd, IDC_REDUCT, ls(cfg.hLocale, IDS_REDUCT));
+
+	return TRUE;
+}
+
 INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	CString buffer;
@@ -358,10 +387,10 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 	{
 		case WM_INITDIALOG:
 		{
-			// Set Position
+			// Correct position
 			SetWindowPos(hwndDlg, 0, tab_pages.rc.left, tab_pages.rc.top, tab_pages.rc.right - tab_pages.rc.left, tab_pages.rc.bottom - tab_pages.rc.top, 0);
 
-			// Activate Tab Texture
+			// Enable tab texture
 			EnableThemeDialogTexture(hwndDlg, ETDT_ENABLETAB);
 
 			switch(SendDlgItemMessage(GetParent(hwndDlg), IDC_TAB, TCM_GETCURSEL, 0, 0))
@@ -375,7 +404,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					CheckDlgButton(hwndDlg, IDC_ALWAYS_ON_TOP_CHK, ini.read(APP_NAME_SHORT, L"AlwaysOnTop", 0) ? BST_CHECKED : BST_UNCHECKED);
 					CheckDlgButton(hwndDlg, IDC_SHOW_AS_KILOBYTE_CHK, ini.read(APP_NAME_SHORT, L"ShowAsKilobyte", 0) ? BST_CHECKED : BST_UNCHECKED);
 
-					// Color Indication
+					// Color indication
 					CheckDlgButton(hwndDlg, IDC_COLOR_INDICATION_TRAY_CHK, ini.read(APP_NAME_SHORT, L"ColorIndicationTray", 1) ? BST_CHECKED : BST_UNCHECKED);
 					CheckDlgButton(hwndDlg, IDC_COLOR_INDICATION_LISTVIEW_CHK, ini.read(APP_NAME_SHORT, L"ColorIndicationListview", 1) ? BST_CHECKED : BST_UNCHECKED);
 
@@ -385,11 +414,12 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					WIN32_FIND_DATA wfd = {0};
 					buffer.Format(L"%s\\Languages\\*.dll", cfg.szCurrentDir);
 					HANDLE hFind = FindFirstFile(buffer, &wfd);
-					HINSTANCE hLanguage= NULL;
+					HINSTANCE hLanguage = NULL;
 
 					if(hFind != INVALID_HANDLE_VALUE)
 					{
-						do {
+						do
+						{
 							if(!(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 							{
 								PathRemoveExtension(wfd.cFileName);
@@ -402,13 +432,14 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 									FreeLibrary(hLanguage);
 								}
 							}
-						} while(FindNextFile(hFind, &wfd));
+						}
+						while(FindNextFile(hFind, &wfd));
 
 						FindClose(hFind);
 					}
 
 					if(SendDlgItemMessage(hwndDlg, IDC_LANGUAGE_CB, CB_GETCOUNT, 0, 0) <= 1)
-						EnableWindow(GetDlgItem(hwndDlg, IDC_LANGUAGE_CB), 0);
+						EnableWindow(GetDlgItem(hwndDlg, IDC_LANGUAGE_CB), FALSE);
 
 					if(SendDlgItemMessage(hwndDlg, IDC_LANGUAGE_CB, CB_SELECTSTRING, 1, (LPARAM)ini.read(APP_NAME_SHORT, L"Language", MAX_PATH, 0).GetBuffer()) == CB_ERR)
 						SendDlgItemMessage(hwndDlg, IDC_LANGUAGE_CB, CB_SETCURSEL, 0, 0);
@@ -421,19 +452,19 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 				// MEMORY REDUCTION
 				case 1:
 				{
-					// Cleaning region
+					// Reduction region
 					CheckDlgButton(hwndDlg, IDC_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
 					CheckDlgButton(hwndDlg, IDC_SYSTEM_WORKING_SET_CHK, ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) ? BST_CHECKED : BST_UNCHECKED);
 					CheckDlgButton(hwndDlg, IDC_MODIFIED_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
 					CheckDlgButton(hwndDlg, IDC_STANDBY_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
 
-					// Cleaning
+					// Reduction options
 					CheckDlgButton(hwndDlg, IDC_ASK_BEFORE_REDUCT_CHK, ini.read(APP_NAME_SHORT, L"AskBeforeCleaning", 1) ? BST_CHECKED : BST_UNCHECKED);
 					CheckDlgButton(hwndDlg, IDC_AUTOREDUCT_ENABLE_CHK, ini.read(APP_NAME_SHORT, L"AutoReduct", 0) ? BST_CHECKED : BST_UNCHECKED);
 
 					// Trackbar
 					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETTICFREQ, 5, 0);				 
-					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETRANGE, 1, MAKELPARAM(5, 99));
+					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETRANGE, 1, MAKELPARAM(1, 99));
 					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETPOS, 1, ini.read(APP_NAME_SHORT, L"AutoReductPercents", 90));
 
 					SendMessage(hwndDlg, WM_HSCROLL, MAKELPARAM(SB_ENDSCROLL, 0), 1);
@@ -442,14 +473,14 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					// Indicate unsupported features
 					if(!cfg.bSupportedOS)
 					{
-						EnableWindow(GetDlgItem(hwndDlg, IDC_WORKING_SET_CHK), 0);
-						EnableWindow(GetDlgItem(hwndDlg, IDC_MODIFIED_PAGELIST_CHK), 0);
-						EnableWindow(GetDlgItem(hwndDlg, IDC_STANDBY_PAGELIST_CHK), 0);
+						EnableWindow(GetDlgItem(hwndDlg, IDC_WORKING_SET_CHK), FALSE);
+						EnableWindow(GetDlgItem(hwndDlg, IDC_MODIFIED_PAGELIST_CHK), FALSE);
+						EnableWindow(GetDlgItem(hwndDlg, IDC_STANDBY_PAGELIST_CHK), FALSE);
 					}
 
 					break;
 				}
-				
+
 				// TRAY
 				case 2:
 				{
@@ -457,7 +488,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 					// Configure Up-Down #1
 					SendDlgItemMessage(hwndDlg, IDC_REFRESHRATE, UDM_SETACCEL, 1, (LPARAM)&uda_rr);
-					SendDlgItemMessage(hwndDlg, IDC_REFRESHRATE, UDM_SETRANGE32, 100, 60000);
+					SendDlgItemMessage(hwndDlg, IDC_REFRESHRATE, UDM_SETRANGE32, 100, 10000);
 					SendDlgItemMessage(hwndDlg, IDC_REFRESHRATE, UDM_SETPOS32, 0, ini.read(APP_NAME_SHORT, L"RefreshRate", 500));
 
 					// Configure Up-Down #2
@@ -475,7 +506,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					if(SendDlgItemMessage(hwndDlg, IDC_DOUBLECLICK_CB, CB_SETCURSEL, ini.read(APP_NAME_SHORT, L"OnDoubleClick", 0), 0) == CB_ERR)
 						SendDlgItemMessage(hwndDlg, IDC_DOUBLECLICK_CB, CB_SETCURSEL, 0, 0);
 
-					// Tray displayed memory region
+					// Tray memory region
 					for(int i = IDS_MEM_PHYSICAL; i < (IDS_MEM_SYSCACHE + 1); i++)
 						SendDlgItemMessage(hwndDlg, IDC_TRAYMEMORYREGION_CB, CB_ADDSTRING, 0, (LPARAM)ls(cfg.hLocale, i).GetBuffer());
 
@@ -511,7 +542,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					CheckDlgButton(hwndDlg, IDC_BALLOON_DANGER_CHK, ini.read(APP_NAME_SHORT, L"BalloonDangerLevel", 1) ? BST_CHECKED : BST_UNCHECKED);
 
 					// Options
-					SendDlgItemMessage(hwndDlg, IDC_BALLOONINTERVAL, UDM_SETRANGE32, 5, 1000);
+					SendDlgItemMessage(hwndDlg, IDC_BALLOONINTERVAL, UDM_SETRANGE32, 5, 100);
 					SendDlgItemMessage(hwndDlg, IDC_BALLOONINTERVAL, UDM_SETPOS32, 0, ini.read(APP_NAME_SHORT, L"BalloonInterval", 10));
 
 					SendMessage(hwndDlg, WM_COMMAND, MAKELPARAM(IDC_BALLOON_SHOW_CHK, 0), 0);
@@ -530,74 +561,75 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			if(lpdis->itemAction == ODA_DRAWENTIRE && wParam >= IDC_TITLE_1)
 			{
 				DrawTitle(hwndDlg, wParam, lpdis->hDC, &lpdis->rcItem, cfg.hTitleFont);
-				return TRUE;
-			}
-
-			HTHEME hTheme = OpenThemeDataEx(hwndDlg, L"BUTTON", 0);
-
-			if(hTheme)
-			{
-				// Draw styled button
-				iBuffer = PBS_DEFAULTED;
-				
-				if(lpdis->itemState & ODS_SELECTED)
-					iBuffer = PBS_PRESSED;
-
-				else if(lpdis->itemState & ODS_HOTLIGHT)
-					iBuffer = PBS_HOT;
-
-				if(IsThemeBackgroundPartiallyTransparent(hTheme, BP_PUSHBUTTON, iBuffer))
-					DrawThemeParentBackground(hwndDlg, lpdis->hDC, &lpdis->rcItem);
-
-				DrawThemeBackgroundEx(hTheme, lpdis->hDC, BP_PUSHBUTTON, iBuffer, &lpdis->rcItem, NULL);
-	
-				CloseThemeData(hTheme);
 			}
 			else
 			{
-				// Draw classic button
-				iBuffer = DFCS_BUTTONPUSH;
-				
-				if(lpdis->itemState & ODS_SELECTED)
-					iBuffer |= DFCS_PUSHED;
+				HTHEME hTheme = OpenThemeDataEx(hwndDlg, L"BUTTON", 0);
 
-				else if(lpdis->itemState & ODS_HOTLIGHT)
-					iBuffer |= DFCS_HOT;
+				if(hTheme)
+				{
+					// Draw styled button
+					iBuffer = PBS_DEFAULTED;
 
-				DrawFrameControl(lpdis->hDC, &lpdis->rcItem, DFC_BUTTON, iBuffer);
+					if(lpdis->itemState & ODS_SELECTED)
+						iBuffer |= PBS_PRESSED;
+
+					else if(lpdis->itemState & ODS_HOTLIGHT)
+						iBuffer |= PBS_HOT;
+
+					if(IsThemeBackgroundPartiallyTransparent(hTheme, BP_PUSHBUTTON, iBuffer))
+						DrawThemeParentBackground(hwndDlg, lpdis->hDC, &lpdis->rcItem);
+
+					DrawThemeBackgroundEx(hTheme, lpdis->hDC, BP_PUSHBUTTON, iBuffer, &lpdis->rcItem, NULL);
+
+					CloseThemeData(hTheme);
+				}
+				else
+				{
+					// Draw classic button
+					iBuffer = DFCS_BUTTONPUSH;
+
+					if(lpdis->itemState & ODS_SELECTED)
+						iBuffer |= DFCS_PUSHED;
+
+					else if(lpdis->itemState & ODS_HOTLIGHT)
+						iBuffer |= DFCS_HOT;
+
+					DrawFrameControl(lpdis->hDC, &lpdis->rcItem, DFC_BUTTON, iBuffer);
+				}
+
+				// New rect for color indicator
+				lpdis->rcItem.left += 6;
+				lpdis->rcItem.top += 6;
+				lpdis->rcItem.right -= 6;
+				lpdis->rcItem.bottom -= 6;
+
+				// Draw background
+				COLORREF clrBg = 0;
+
+				if(wParam == IDC_TRAY_TEXT_CLR_BTN)
+					clrBg = ini.read(APP_NAME_SHORT, L"TrayTextClr", COLOR_TRAY_TEXT);
+
+				else if(wParam == IDC_TRAY_BG_CLR_BTN)
+					clrBg = ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", COLOR_TRAY_BG);
+
+				else if(wParam == IDC_LISTVIEW_TEXT_CLR_BTN)
+					clrBg = ini.read(APP_NAME_SHORT, L"ListViewTextClr", COLOR_LISTVIEW_TEXT);
+
+				else if(wParam == IDC_LEVEL_NORMAL_CLR_BTN)
+					clrBg = ini.read(APP_NAME_SHORT, L"LevelNormalClr", COLOR_LEVEL_NORMAL);
+
+				else if(wParam == IDC_LEVEL_WARNING_CLR_BTN)
+					clrBg = ini.read(APP_NAME_SHORT, L"LevelWarningClr", COLOR_LEVEL_WARNING);
+
+				else if(wParam == IDC_LEVEL_DANGER_CLR_BTN)
+					clrBg = ini.read(APP_NAME_SHORT, L"LevelDangerClr", COLOR_LEVEL_DANGER);
+
+				// FillRect
+				COLORREF clrOld = SetBkColor(lpdis->hDC, clrBg);
+				ExtTextOut(lpdis->hDC, 0, 0, ETO_OPAQUE, &lpdis->rcItem, NULL, 0, NULL);
+				SetBkColor(lpdis->hDC, clrOld);
 			}
-
-			// New rect for color indicator
-			lpdis->rcItem.left += 6;
-			lpdis->rcItem.top += 6;
-			lpdis->rcItem.right -= 6;
-			lpdis->rcItem.bottom -= 6;
-
-			// Draw background
-			COLORREF clrBg = 0;
-				
-			if(wParam == IDC_TRAY_TEXT_CLR_BTN)
-				clrBg = ini.read(APP_NAME_SHORT, L"TrayTextClr", COLOR_TRAY_TEXT);
-				
-			else if(wParam == IDC_TRAY_BG_CLR_BTN)
-				clrBg = ini.read(APP_NAME_SHORT, L"TrayBackgroundClr", COLOR_TRAY_BG);
-				
-			else if(wParam == IDC_LISTVIEW_TEXT_CLR_BTN)
-				clrBg = ini.read(APP_NAME_SHORT, L"ListViewTextClr", COLOR_LISTVIEW_TEXT);
-				
-			else if(wParam == IDC_LEVEL_NORMAL_CLR_BTN)
-				clrBg = ini.read(APP_NAME_SHORT, L"LevelNormalClr", COLOR_LEVEL_NORMAL);
-				
-			else if(wParam == IDC_LEVEL_WARNING_CLR_BTN)
-				clrBg = ini.read(APP_NAME_SHORT, L"LevelWarningClr", COLOR_LEVEL_WARNING);
-
-			else if(wParam == IDC_LEVEL_DANGER_CLR_BTN)
-				clrBg = ini.read(APP_NAME_SHORT, L"LevelDangerClr", COLOR_LEVEL_DANGER);
-
-			// FillRect
-			COLORREF clrOld = SetBkColor(lpdis->hDC, clrBg);
-			ExtTextOut(lpdis->hDC, 0, 0, ETO_OPAQUE, &lpdis->rcItem, NULL, 0, NULL);
-			SetBkColor(lpdis->hDC, clrOld);
 
 			return TRUE;
 		}
@@ -670,7 +702,6 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 			switch(LOWORD(wParam))
 			{
-
 				case IDC_TRAY_FONT_BTN:
 				{
 					CHOOSEFONT cf = {0};
@@ -730,6 +761,10 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					{
 						buffer = L"LevelDangerClr";
 						clrDefault = COLOR_LEVEL_DANGER;
+					}
+					else
+					{
+						return FALSE;
 					}
 
 					cc.lStructSize = sizeof(cc);
@@ -792,7 +827,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			for(int i = 0; i < PAGE_COUNT; i++)
 			{
 				buffer = ls(cfg.hLocale, tab_pages.iTitle[i]);
-				
+
 				tci.mask = TCIF_TEXT;
 				tci.pszText = buffer.GetBuffer();
 				tci.cchTextMax = buffer.GetLength();
@@ -809,7 +844,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 				GetClientRect(GetDlgItem(hwndDlg, IDC_TAB), &tab_pages.rc);
 				TabCtrl_AdjustRect(GetDlgItem(hwndDlg, IDC_TAB), 0, &tab_pages.rc);
-			
+
 				tab_pages.rc.top += rc.top + 1;	tab_pages.rc.left += rc.left - 1; tab_pages.rc.right += rc.left - 1; tab_pages.rc.bottom += rc.top - 1;
 			}
 
@@ -819,7 +854,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 			// Activate last used tab page
 			SendDlgItemMessage(hwndDlg, IDC_TAB, TCM_SETCURSEL, ini.read(APP_NAME_SHORT, L"LastTab", 0), 0);
-			
+
 			// Initialize page
 			NMHDR hdr = {0};
 			hdr.code = TCN_SELCHANGE;
@@ -828,11 +863,11 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			SendMessage(hwndDlg, WM_NOTIFY, 0, (LPARAM)&hdr);
 
 			// Disable "Apply" button
-			EnableWindow(GetDlgItem(hwndDlg, IDC_APPLY), 0);
+			EnableWindow(GetDlgItem(hwndDlg, IDC_APPLY), FALSE);
 
 			break;
 		}
-		
+
 		case WM_DESTROY:
 		{
 			ini.write(APP_NAME_SHORT, L"LastTab", SendDlgItemMessage(hwndDlg, IDC_TAB, TCM_GETCURSEL, 0, 0));
@@ -898,14 +933,14 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 						// Language
 						iBuffer = SendDlgItemMessage(tab_pages.hWnd[0], IDC_LANGUAGE_CB, CB_GETCURSEL, 0, 0);
-						
+
 						if(cfg.hLocale)
 							FreeLibrary(cfg.hLocale);
 
 						if(iBuffer <= 0)
 						{
 							ini.write(APP_NAME_SHORT, L"Language", (DWORD)0);
-							cfg.hLocale = 0;
+							cfg.hLocale = NULL;
 						}
 						else
 						{
@@ -917,6 +952,8 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 							buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, szBuffer);
 							cfg.hLocale = LoadLanguage(buffer);
 						}
+
+						RedrawMainWindow(); // re-localization
 
 						// Size Unit
 						iBuffer = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_SHOW_AS_KILOBYTE_CHK) == BST_CHECKED);
@@ -943,7 +980,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						cfg.uAutoReductPercents = SendDlgItemMessage(tab_pages.hWnd[1], IDC_AUTOREDUCT_TB, TBM_GETPOS, 0, 0);
 						ini.write(APP_NAME_SHORT, L"AutoReductPercents", cfg.uAutoReductPercents);
 					}
-					
+
 					// TRAY
 					if(tab_pages.hWnd[2])
 					{
@@ -951,9 +988,9 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						iBuffer = SendDlgItemMessage(tab_pages.hWnd[2], IDC_REFRESHRATE, UDM_GETPOS32, 0, 0);
 
 						ini.write(APP_NAME_SHORT, L"RefreshRate", iBuffer);
-						KillTimer(GetParent(hwndDlg), UID);
-						SetTimer(GetParent(hwndDlg), UID, iBuffer, 0);
-						
+						KillTimer(cfg.hWnd, UID);
+						SetTimer(cfg.hWnd, UID, iBuffer, 0);
+
 						// "Warning" Level
 						cfg.uWarningLevel = SendDlgItemMessage(tab_pages.hWnd[2], IDC_WARNING_LEVEL, UDM_GETPOS32, 0, 0);
 						ini.write(APP_NAME_SHORT, L"WarningLevel", cfg.uWarningLevel);
@@ -995,7 +1032,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 					if(LOWORD(wParam) == IDC_APPLY)
 					{
-						EnableWindow(GetDlgItem(hwndDlg, IDC_APPLY), 0);
+						EnableWindow(GetDlgItem(hwndDlg, IDC_APPLY), FALSE);
 						break;
 					}
 
@@ -1166,8 +1203,8 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 						}
 					}
 
-					SetWindowLong(hwndDlg, DWL_MSGRESULT, lResult);
-					return 1;
+					SetWindowLongPtr(hwndDlg, DWL_MSGRESULT, lResult);
+					return TRUE;
 				}
 			}
 
@@ -1202,7 +1239,7 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 						buffer = L"CleanStandbyPagelist";
 
 					else
-						return 0;
+						return FALSE;
 
 					ini.write(APP_NAME_SHORT, buffer, !ini.read(APP_NAME_SHORT, buffer, 0));
 
@@ -1260,7 +1297,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				PostMessage(HWND_BROADCAST, WM_MUTEX, GetCurrentProcessId(), 1);
 				DestroyWindow(hwndDlg);
 
-				return 0;
+				return FALSE;
 			}
 
 			// Set title
@@ -1321,16 +1358,8 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 1, LVCFMT_RIGHT);
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 2, LVCFMT_LEFT);
 
-			// Insert groups
-			for(int i = IDS_MEM_PHYSICAL, j = 0; i < (IDS_MEM_SYSCACHE + 1); i++, j++)
-				Lv_InsertGroup(hwndDlg, IDC_MONITOR, ls(cfg.hLocale, i), j);
-			
-			// Insert items
-			for(int i = 0, j = 0; i < 3; i++)
-			{
-				for(int k = IDS_MEM_USAGE; k < (IDS_MEM_TOTAL + 1); k++)
-					Lv_InsertItem(hwndDlg, IDC_MONITOR, ls(cfg.hLocale, k), j++, 0, -1, i);
-			}
+			// Redraw
+			RedrawMainWindow();
 
 			// Privilege indicator
 			if(cfg.bUnderUAC)
@@ -1387,36 +1416,6 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 
-		case WM_DRAWITEM:
-		{
-			LPDRAWITEMSTRUCT nmlp = (LPDRAWITEMSTRUCT)lParam;
-
-			if(nmlp->itemAction == ODA_DRAWENTIRE && (wParam == IDC_TITLE_1 || wParam == IDC_TITLE_2))
-			{
-				DrawTitle(hwndDlg, wParam, nmlp->hDC, &nmlp->rcItem, cfg.hTitleFont);
-			}
-			else if(wParam == IDC_REDUCT)
-			{
-				HTHEME hTheme = OpenThemeDataEx(hwndDlg, L"TEXTSTYLE", 0);
-
-				GetDlgItemText(hwndDlg, wParam, buffer.GetBuffer(MAX_PATH), MAX_PATH);
-				buffer.ReleaseBuffer();
-
-				//if(IsThemeBackgroundPartiallyTransparent(hTheme, BP_PUSHBUTTON, iBtnState))
-				//	DrawThemeParentBackground(hwndDlg, nmlp->hDC, &nmlp->rcItem);
-
-				COLORREF clrOld = SetBkColor(nmlp->hDC, GetSysColor(COLOR_BTNFACE));
-				ExtTextOut(nmlp->hDC, 0, 0, ETO_OPAQUE, &nmlp->rcItem, NULL, 0, NULL);
-				SetBkColor(nmlp->hDC, clrOld);
-
-				DrawThemeText(hTheme, nmlp->hDC, TEXT_CONTROLLABEL, nmlp->itemState & ODS_DISABLED ? TS_CONTROLLABEL_DISABLED : TS_CONTROLLABEL_NORMAL, buffer, buffer.GetLength(), DT_CENTER | DT_VCENTER | DT_SINGLELINE, 0, &nmlp->rcItem);
-
-				CloseThemeData(hTheme);
-			}
-
-			return TRUE;
-		}
-
 		case WM_PAINT:
 		{
 			PAINTSTRUCT ps = {0};
@@ -1453,20 +1452,20 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			{
 				case NM_CUSTOMDRAW:
 				{
-					LONG dwResult = CDRF_DODEFAULT;
+					LONG lResult = CDRF_DODEFAULT;
 					LPNMLVCUSTOMDRAW lpnmlv = (LPNMLVCUSTOMDRAW)lParam;
 
 					switch(lpnmlv->nmcd.dwDrawStage)
 					{
 						case CDDS_PREPAINT:
 						{
-							dwResult = CDRF_NOTIFYITEMDRAW;
+							lResult = CDRF_NOTIFYITEMDRAW;
 							break;
 						}
 
 						case CDDS_ITEMPREPAINT:
 						{
-							dwResult = CDRF_NOTIFYSUBITEMDRAW;
+							lResult = CDRF_NOTIFYSUBITEMDRAW;
 							break;
 						}
 
@@ -1485,7 +1484,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 								else
 									lpnmlv->clrText = ini.read(APP_NAME_SHORT, L"ListViewTextClr", COLOR_LISTVIEW_TEXT);
 
-								dwResult = CDRF_NEWFONT;
+								lResult = CDRF_NEWFONT;
 							}
 							else if(lpnmlv->nmcd.hdr.idFrom == IDC_RESULT && lpnmlv->iSubItem > 0)
 							{
@@ -1503,18 +1502,15 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 									}
 								}
 
-
-
-
-								dwResult = CDRF_NEWFONT;
+								lResult = CDRF_NEWFONT;
 							}
 
 							break;
 						}
 					}
 
-					SetWindowLongPtr(hwndDlg, DWL_MSGRESULT, dwResult);
-					return 1;
+					SetWindowLongPtr(hwndDlg, DWL_MSGRESULT, lResult);
+					return TRUE;
 				}
 			}
 
@@ -1538,7 +1534,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			else if(wParam == SC_CLOSE)
 			{
 				ToggleVisible(hwndDlg);
-				return 1;
+				return TRUE;
 			}
 
 			break;

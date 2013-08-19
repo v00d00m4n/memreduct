@@ -111,39 +111,41 @@
 #define IDS_ABOUT								10003
 #define IDS_COPYRIGHT							10004
 
-#define IDS_MEM_PHYSICAL						10005
-#define IDS_MEM_PAGEFILE						10006
-#define IDS_MEM_SYSCACHE						10007
+#define IDS_REDUCT		                        10005
 
-#define IDS_MEM_USAGE							10008
-#define IDS_MEM_FREE							10009
-#define IDS_MEM_TOTAL							10010
+#define IDS_MEM_PHYSICAL						10006
+#define IDS_MEM_PAGEFILE						10007
+#define IDS_MEM_SYSCACHE						10008
 
-#define IDS_TRAY_HIDE	                        10011
-#define IDS_TRAY_TOOLTIP                        10012
+#define IDS_MEM_USAGE							10009
+#define IDS_MEM_FREE							10010
+#define IDS_MEM_TOTAL							10011
 
-#define IDS_BALLOON_AUTOREDUCT	                10013
-#define IDS_BALLOON_WARNING_LEVEL               10014
-#define IDS_BALLOON_DANGER_LEVEL                10015
+#define IDS_TRAY_HIDE	                        10012
+#define IDS_TRAY_TOOLTIP                        10013
 
-#define IDS_UNIT_KB		                        10016
-#define IDS_UNIT_MB		                        10017
+#define IDS_BALLOON_AUTOREDUCT	                10014
+#define IDS_BALLOON_WARNING_LEVEL               10015
+#define IDS_BALLOON_DANGER_LEVEL                10016
+
+#define IDS_UNIT_KB		                        10017
+#define IDS_UNIT_MB		                        10018
 							
-#define IDS_REDUCT_SELECTREGION					10018
-#define IDS_REDUCT_WARNING			            10019
+#define IDS_REDUCT_SELECTREGION					10019
+#define IDS_REDUCT_WARNING			            10020
 
-#define IDS_PAGE_1								10020
-#define IDS_PAGE_2								10021
-#define IDS_PAGE_3								10022
-#define IDS_PAGE_4								10023
-#define IDS_PAGE_5								10024
+#define IDS_PAGE_1								10021
+#define IDS_PAGE_2								10022
+#define IDS_PAGE_3								10023
+#define IDS_PAGE_4								10024
+#define IDS_PAGE_5								10025
 
-#define IDS_DOUBLECLICK_1						10025
-#define IDS_DOUBLECLICK_2						10026
-#define IDS_DOUBLECLICK_3						10027
-#define IDS_DOUBLECLICK_4						10028
+#define IDS_DOUBLECLICK_1						10026
+#define IDS_DOUBLECLICK_2						10027
+#define IDS_DOUBLECLICK_3						10028
+#define IDS_DOUBLECLICK_4						10029
 
-#define IDS_UAC_WARNING							10029
+#define IDS_UAC_WARNING							10030
 
 // Icons
 #define IDI_MAIN	                            100

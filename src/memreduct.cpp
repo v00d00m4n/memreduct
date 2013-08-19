@@ -428,8 +428,8 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					CheckDlgButton(hwndDlg, IDC_STANDBY_PAGELIST_CHK, ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0) ? BST_CHECKED : BST_UNCHECKED);
 
 					// Cleaning
-					CheckDlgButton(hwndDlg, IDC_ASK_BEFORE_CLEANING_CHK, ini.read(APP_NAME_SHORT, L"AskBeforeCleaning", 1) ? BST_CHECKED : BST_UNCHECKED);
-					CheckDlgButton(hwndDlg, IDC_AUTOREDUCT_CHK, ini.read(APP_NAME_SHORT, L"AutoReduct", 0) ? BST_CHECKED : BST_UNCHECKED);
+					CheckDlgButton(hwndDlg, IDC_ASK_BEFORE_REDUCT_CHK, ini.read(APP_NAME_SHORT, L"AskBeforeCleaning", 1) ? BST_CHECKED : BST_UNCHECKED);
+					CheckDlgButton(hwndDlg, IDC_AUTOREDUCT_ENABLE_CHK, ini.read(APP_NAME_SHORT, L"AutoReduct", 0) ? BST_CHECKED : BST_UNCHECKED);
 
 					// Trackbar
 					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETTICFREQ, 5, 0);				 
@@ -437,7 +437,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					SendDlgItemMessage(hwndDlg, IDC_AUTOREDUCT_TB, TBM_SETPOS, 1, ini.read(APP_NAME_SHORT, L"AutoReductPercents", 90));
 
 					SendMessage(hwndDlg, WM_HSCROLL, MAKELPARAM(SB_ENDSCROLL, 0), 1);
-					SendMessage(hwndDlg, WM_COMMAND, MAKELPARAM(IDC_AUTOREDUCT_CHK, 0), 0);
+					SendMessage(hwndDlg, WM_COMMAND, MAKELPARAM(IDC_AUTOREDUCT_ENABLE_CHK, 0), 0);
 
 					// Indicate unsupported features
 					if(!cfg.bSupportedOS)
@@ -527,7 +527,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		{
 			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
 
-			if(lpdis->itemAction == ODA_DRAWENTIRE && (wParam == IDC_TITLE_1 || wParam == IDC_TITLE_2 || wParam == IDC_TITLE_3))
+			if(lpdis->itemAction == ODA_DRAWENTIRE && wParam >= IDC_TITLE_1)
 			{
 				DrawTitle(hwndDlg, wParam, lpdis->hDC, &lpdis->rcItem, cfg.hTitleFont);
 				return TRUE;
@@ -747,9 +747,9 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					break;
 				}
 
-				case IDC_AUTOREDUCT_CHK:
+				case IDC_AUTOREDUCT_ENABLE_CHK:
 				{
-					EnableWindow(GetDlgItem(hwndDlg, IDC_AUTOREDUCT_TB), (IsDlgButtonChecked(hwndDlg, IDC_AUTOREDUCT_CHK) == BST_CHECKED));
+					EnableWindow(GetDlgItem(hwndDlg, IDC_AUTOREDUCT_TB), (IsDlgButtonChecked(hwndDlg, IDC_AUTOREDUCT_ENABLE_CHK) == BST_CHECKED));
 					break;
 				}
 
@@ -935,9 +935,9 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						ini.write(APP_NAME_SHORT, L"CleanStandbyPagelist", (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_STANDBY_PAGELIST_CHK) == BST_CHECKED) ? 1 : 0);
 
 						// Reduction options
-						ini.write(APP_NAME_SHORT, L"AskBeforeCleaning", (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_ASK_BEFORE_CLEANING_CHK) == BST_CHECKED) ? 1 : 0);
+						ini.write(APP_NAME_SHORT, L"AskBeforeCleaning", (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_ASK_BEFORE_REDUCT_CHK) == BST_CHECKED) ? 1 : 0);
 
-						cfg.bAutoReduct = (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_AUTOREDUCT_CHK) == BST_CHECKED) ? 1 : 0;
+						cfg.bAutoReduct = (IsDlgButtonChecked(tab_pages.hWnd[1], IDC_AUTOREDUCT_ENABLE_CHK) == BST_CHECKED) ? 1 : 0;
 						ini.write(APP_NAME_SHORT, L"AutoReduct", cfg.bAutoReduct);
 
 						cfg.uAutoReductPercents = SendDlgItemMessage(tab_pages.hWnd[1], IDC_AUTOREDUCT_TB, TBM_GETPOS, 0, 0);
@@ -1037,7 +1037,7 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 			GetClientRect(GetDlgItem(hwndDlg, IDC_RESULT), &rc);
 
 			for (int i = 0; i < 3; i++)
-				Lv_InsertColumn(hwndDlg, IDC_RESULT, L"", rc.right / (i == 0 ? 2 : 4), i, 0);
+				Lv_InsertColumn(hwndDlg, IDC_RESULT, L"", rc.right / (i == 0 ? 2 : 4), i, (i == 0 ? LVCFMT_LEFT : LVCFMT_RIGHT));
 
 			// Insert items
 			for(int i = IDS_MEM_PHYSICAL, j = 0; i < (IDS_MEM_SYSCACHE + 1); i++, j++)
@@ -1152,7 +1152,10 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 								if(nmlp->nmcd.lItemlParam)
 								{
-									if(nmlp->iSubItem == 2 && LOWORD(nmlp->nmcd.lItemlParam) > HIWORD(nmlp->nmcd.lItemlParam))
+									if(nmlp->iSubItem == 1 && LOWORD(nmlp->nmcd.lItemlParam) > HIWORD(nmlp->nmcd.lItemlParam))
+										nmlp->clrText = ini.read(APP_NAME_SHORT, L"LevelDangerClr", COLOR_LEVEL_DANGER);
+
+									else if(nmlp->iSubItem == 2 && LOWORD(nmlp->nmcd.lItemlParam) > HIWORD(nmlp->nmcd.lItemlParam))
 										nmlp->clrText = ini.read(APP_NAME_SHORT, L"LevelNormalClr", COLOR_LEVEL_NORMAL);
 								}
 
@@ -1203,7 +1206,7 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 					ini.write(APP_NAME_SHORT, buffer, !ini.read(APP_NAME_SHORT, buffer, 0));
 
-					EnableWindow(GetDlgItem(hwndDlg, IDC_OK), TRUE);
+					EnableWindow(GetDlgItem(hwndDlg, IDC_OK), (!ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) && !ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0)) ? FALSE : TRUE);
 
 					break;
 				}
@@ -1586,10 +1589,10 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					if(iBuffer)
 					{
 						if(mu.dwPercentPhys >= cfg.uDangerLevel && ini.read(APP_NAME_SHORT, L"BalloonDangerLevel", 1))
-							ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_REDLEVEL));
+							ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_DANGER_LEVEL));
 
 						else if(mu.dwPercentPhys >= cfg.uWarningLevel && ini.read(APP_NAME_SHORT, L"BalloonWarningLevel", 0))
-							ShowBalloonTip(NIIF_WARNING, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_YELLOWLEVEL));
+							ShowBalloonTip(NIIF_WARNING, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_WARNING_LEVEL));
 					}
 
 					if(IsWindowVisible(hwndDlg))
@@ -1845,32 +1848,6 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	if(FileExists(buffer))
 		cfg.hLocale = LoadLanguage(buffer, APP_VERSION);
 
-	/*
-	time_t start, end;
-	time(&start);
-
-
-
-	for(int i = 0; i < 16000; i++)
-	{
-	//	ini.read(APP_NAME_SHORT, L"LevelDangerClr", COLOR_LEVEL_DANGER);
-
-		HANDLE FileHandle = CreateFile(L"memreduct.cfg", GENERIC_READ, FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
-		char data[150] = {0};
-		DWORD dw = 0;
-
-		ReadFile(FileHandle, &data, 149, &dw, NULL);
-
-		//MessageBoxA(0,data,0,0);
-
-	}
-
-	time(&end);
-
-	MessageBox(0,0,0,L"%f", difftime(end, start));
-
-	return 1;
-	*/
 	// Initialize and create window
 	icex.dwSize = sizeof(icex);
 	icex.dwICC = ICC_WIN95_CLASSES | ICC_STANDARD_CLASSES;

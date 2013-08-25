@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 19/08/13
+// lastmod: 25/08/13
 
 #include "routine.h"
 
@@ -953,28 +953,25 @@ INT AboutBoxCreate(HWND hParent, LPWSTR lpszIcon, LPCWSTR lpcszTitle, LPCWSTR lp
 
 	// Check for duplicate
 	if(FindWindowEx(NULL, NULL, L"AboutBox", NULL))
-		return 1;
+		return FALSE;
 
 	// Register class
-	if(!GetClassInfoEx(hInstance, L"AboutBox", &wcex))
-	{
-		wcex.cbSize = sizeof(wcex);
-		wcex.hInstance = hInstance;
-		wcex.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
-		wcex.lpfnWndProc = (WNDPROC)AboutBoxProc;
-		wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-		wcex.hbrBackground = GetSysColorBrush(COLOR_WINDOW);
-		wcex.lpszClassName = L"AboutBox";
+	wcex.cbSize = sizeof(wcex);
+	wcex.hInstance = hInstance;
+	wcex.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
+	wcex.lpfnWndProc = (WNDPROC)AboutBoxProc;
+	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wcex.hbrBackground = GetSysColorBrush(COLOR_WINDOW);
+	wcex.lpszClassName = L"AboutBox";
 
-		if(!RegisterClassEx(&wcex))
-			return 0;
-	}
+	if(!RegisterClassEx(&wcex))
+		return FALSE;
 
 	// Create window
 	HWND hDlg = CreateWindowEx(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, wcex.lpszClassName, lpcszTitle, WS_VISIBLE | WS_POPUP | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 370, 270, hParent, 0, hInstance, 0);
 
 	if(!hDlg)
-		return 0;
+		return FALSE;
 
 	// Create font
 	HFONT hFont = GetFont(13);
@@ -1006,6 +1003,8 @@ INT AboutBoxCreate(HWND hParent, LPWSTR lpszIcon, LPCWSTR lpcszTitle, LPCWSTR lp
 
 	DeleteObject(hFont);
 	DeleteObject(hTitleFont);
+
+	UnregisterClass(L"AboutBox", hInstance);
 
 	return msg.wParam;
 }

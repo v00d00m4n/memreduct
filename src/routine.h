@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 25/08/13
+// lastmod: 27/08/13
 
 #ifndef __ROUTINE_H__
 #define __ROUTINE_H__
@@ -48,7 +48,7 @@ BOOL FileExists(LPCTSTR lpcszPath);
 BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpcszPrivilege, BOOL bEnablePrivilege);
 BOOL ValidWindowsVersion(DWORD dwMajorVersion, DWORD dwMinorVersion);
 
-CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend = 0, CONST WCHAR cSeparator = L',');
+CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend = 0, CONST LPWSTR szSeparator = 0);
 
 VOID SetAlwaysOnTop(HWND hWnd, BOOL bEnable);
 VOID CenterDialog(HWND hWnd);

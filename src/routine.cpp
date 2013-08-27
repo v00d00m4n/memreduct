@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 25/08/13
+// lastmod: 27/08/13
 
 #include "routine.h"
 
@@ -168,10 +168,19 @@ INT Lv_InsertItem(HWND hWnd, INT iCtrlId, CString lpszText, INT iItem, INT iSubI
 }
 
 // Number Format
-CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend, CONST WCHAR cSeparator)
+CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend, LPWSTR szSeparator)
 {
 	CString buffer = L"0";
 	BOOL bHasNegative = lNumber < 0;
+
+	if(!szSeparator)
+	{
+		WCHAR szSep[100] = {0};
+
+		GetLocaleInfo(LOCALE_SYSTEM_DEFAULT, LOCALE_STHOUSAND, szSep, _countof(szSep));
+
+		szSeparator = szSep;
+	}
 
     if(lNumber)
 	{
@@ -179,7 +188,7 @@ CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend, CONST WCHAR cSeparat
 
 		do {
 			if((buffer.GetLength() + 1) % 4 == 0)
-				buffer.AppendChar(cSeparator);
+				buffer.Append(szSeparator);
 
 			INT iMod = lNumber % 10;
 

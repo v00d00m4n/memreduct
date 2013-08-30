@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 27/08/13
+// lastmod: 30/08/13
 
 #include "routine.h"
 
@@ -50,7 +50,7 @@ HTREEITEM Tv_InsertItem(HWND hWnd, INT iCtrlId, CString lpszText, HTREEITEM hPar
 HRESULT Tv_SetStyleEx(HWND hWnd, INT iCtrlId, DWORD dwExStyle, BOOL bExplorerStyle, INT iItemHeight)
 {
 	if(bExplorerStyle)
-		SetWindowTheme(GetDlgItem(hWnd, iCtrlId), L"Explorer", 0);
+		SetWindowTheme(GetDlgItem(hWnd, iCtrlId), L"explorer", 0);
 
 	if(iItemHeight)
 		SendDlgItemMessage(hWnd, iCtrlId, TVM_SETITEMHEIGHT, iItemHeight, 0);
@@ -62,7 +62,7 @@ HRESULT Tv_SetStyleEx(HWND hWnd, INT iCtrlId, DWORD dwExStyle, BOOL bExplorerSty
 DWORD Lv_SetStyleEx(HWND hWnd, INT iCtrlId, DWORD dwExStyle, BOOL bExplorerStyle, BOOL bGroupView)
 {
 	if(bExplorerStyle)
-		SetWindowTheme(GetDlgItem(hWnd, iCtrlId), L"Explorer", 0);
+		SetWindowTheme(GetDlgItem(hWnd, iCtrlId), L"explorer", 0);
 
 	SendDlgItemMessage(hWnd, iCtrlId, LVM_ENABLEGROUPVIEW, bGroupView, 0);
 
@@ -176,7 +176,6 @@ CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend, LPWSTR szSeparator)
 	if(!szSeparator)
 	{
 		WCHAR szSep[100] = {0};
-
 		GetLocaleInfo(LOCALE_SYSTEM_DEFAULT, LOCALE_STHOUSAND, szSep, _countof(szSep));
 
 		szSeparator = szSep;
@@ -186,7 +185,8 @@ CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend, LPWSTR szSeparator)
 	{
 		buffer.Empty();
 
-		do {
+		do
+		{
 			if((buffer.GetLength() + 1) % 4 == 0)
 				buffer.Append(szSeparator);
 
@@ -196,7 +196,8 @@ CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend, LPWSTR szSeparator)
 				iMod = -iMod;
 
 			buffer.AppendChar(iMod + L'0');
-		} while(lNumber /= 10);
+		}
+		while(lNumber /= 10);
 
 		if(bHasNegative)
 			buffer.AppendChar(L'-');
@@ -331,7 +332,7 @@ BOOL RunElevated(HWND hWnd, LPCTSTR pszPath, LPCTSTR pszParameters)
 	SHELLEXECUTEINFO shex = {0};
 
     shex.cbSize = sizeof(shex);
-    shex.fMask = 0;
+    shex.fMask = SEE_MASK_INVOKEIDLIST | SEE_MASK_UNICODE;
     shex.hwnd = hWnd;
     shex.lpVerb = L"runas";
     shex.lpFile = pszPath;
@@ -871,7 +872,7 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		case WM_CLOSE:
 		{
 			DestroyWindow(hwndDlg);
-//			return 0;
+			break;
 		}
 
 		case WM_DESTROY: 
@@ -882,7 +883,7 @@ LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				SetActiveWindow(GetParent(hwndDlg));
 			}
 
-			PostQuitMessage(0); 
+			PostQuitMessage(0);
 			return 0;
 		}
 

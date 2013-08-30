@@ -1301,7 +1301,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 
 			// Set title
-			SetWindowText(hwndDlg, APP_NAME L" " APP_VERSION);
+			SetWindowText(hwndDlg, APP_NAME L" " APP_VERSION L" // TEST VERSION");
 
 			// Set icons
 			SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_MAIN), IMAGE_ICON, 32, 32, 0));

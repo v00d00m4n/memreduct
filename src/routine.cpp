@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 30/08/13
+// lastmod: 02/09/13
 
 #include "routine.h"
 
@@ -332,7 +332,7 @@ BOOL RunElevated(HWND hWnd, LPCTSTR pszPath, LPCTSTR pszParameters)
 	SHELLEXECUTEINFO shex = {0};
 
     shex.cbSize = sizeof(shex);
-    shex.fMask = SEE_MASK_INVOKEIDLIST | SEE_MASK_UNICODE;
+    shex.fMask = 0;
     shex.hwnd = hWnd;
     shex.lpVerb = L"runas";
     shex.lpFile = pszPath;

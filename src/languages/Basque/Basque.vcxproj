@@ -11,9 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{646A4E17-2D6A-41B7-A0F5-302C8818BA21}</ProjectGuid>
-    <RootNamespace>Chinese (Simplified)</RootNamespace>
-    <ProjectName>Chinese (Simplified)</ProjectName>
+    <ProjectGuid>{E25E4094-649A-4E4F-99DE-77C3BE1146A5}</ProjectGuid>
+    <RootNamespace>Basque</RootNamespace>
+    <ProjectName>Basque</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

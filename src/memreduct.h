@@ -57,6 +57,8 @@ struct CONFIG
 
 	DWORD dwLastBalloon;
 
+	LPARAM lLastResult[3];
+
 	LOGFONT lf;
 };
 

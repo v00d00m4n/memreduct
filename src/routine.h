@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 02/09/13
+// lastmod: 04/09/13
 
 #ifndef __ROUTINE_H__
 #define __ROUTINE_H__
@@ -49,6 +49,7 @@ BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpcszPrivilege, BOOL bEnablePrivilege);
 BOOL ValidWindowsVersion(DWORD dwMajorVersion, DWORD dwMinorVersion);
 
 CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend = 0, CONST LPWSTR szSeparator = 0);
+CString date_format(SYSTEMTIME* st, LCID lcid, DWORD dwDateFlags = 0, DWORD dwTimeFlags = 0);
 
 VOID SetAlwaysOnTop(HWND hWnd, BOOL bEnable);
 VOID CenterDialog(HWND hWnd);
@@ -76,7 +77,7 @@ BOOL DrawTitle(HWND hWnd, INT iDlgItem, HDC hDC, LPRECT lpRc, HFONT hFont);
 INT GetWindowDimension(HWND hWnd, INT iVector, BOOL bClientOnly);
 INT MessageBox(HWND hWnd, UINT uType, LPCWSTR lpcszCaption, LPCWSTR lpcszFormat, ...);
 HWND SetDlgItemTooltip(HWND hWnd, INT iCtrlId, CString lpszText);
-INT WmMutexWrapper(HWND hwndDlg, WPARAM wParam, LPARAM lParam);
+BOOL MutexWrapper(HWND hwndDlg, WPARAM wParam, LPARAM lParam);
 
 LRESULT CALLBACK AboutBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 INT AboutBoxCreate(HWND hParent, LPWSTR lpszIcon, LPCWSTR lpcszTitle, LPCWSTR lpszAppName, LPCWSTR lpcszCopyright, LPCWSTR lpcszUrl);

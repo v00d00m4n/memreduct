@@ -341,13 +341,16 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 		cfg.lLastResult[2] = MAKELPARAM(cfg.lLastResult[2], mu.dwPercentSystemWorkingSet);
 		buffer.Format(L"%d%%\0", mu.dwPercentSystemWorkingSet);
 		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 2, 2, -1, -1, cfg.lLastResult[2]);
+
+		// Show last reduction time
+		SetDlgItemText(hWnd, IDC_INFO, date_format(NULL, LOCALE_SYSTEM_DEFAULT, DATE_AUTOLAYOUT | DATE_LONGDATE));
 	}
 	
 	return TRUE;
 }
 
-// Redraw main window resources
-BOOL RedrawMainWindow()
+// Localize main window resources
+BOOL LocalizeMainWindow()
 {
 	// Menu
 	HMENU hMenu = LoadMenu(cfg.hLocale, MAKEINTRESOURCE(IDM_MAIN));
@@ -950,7 +953,8 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 							cfg.hLocale = LoadLanguage(buffer);
 						}
 
-						RedrawMainWindow(); // re-localization
+						// Localize main window
+						LocalizeMainWindow();
 
 						// Size Unit
 						iBuffer = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_SHOW_AS_KILOBYTE_CHK) == BST_CHECKED);
@@ -1085,8 +1089,12 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 				}
 			}
 
+			// Add menu to button
 			if(cfg.bSupportedOS)
-				SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_SETTINGS), GWL_STYLE, GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_SETTINGS), GWL_STYLE) | BS_SPLITBUTTON);
+				SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_OK), GWL_STYLE, GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_OK), GWL_STYLE) | BS_SPLITBUTTON);
+
+			// Show last reduction time
+//			SetDlgItemText(hwndDlg, IDC_INFO, date_format(NULL, LOCALE_SYSTEM_DEFAULT, DATE_AUTOLAYOUT | DATE_LONGDATE));
 
 			break;
 		}
@@ -1126,7 +1134,13 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 		case WM_CTLCOLORSTATIC:
 		case WM_CTLCOLORDLG:
 		{
-			return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
+			if(GetDlgCtrlID((HWND)lParam) == IDC_INFO)
+			{
+				SetBkMode((HDC)wParam, TRANSPARENT);
+				SetTextColor((HDC)wParam, GetSysColor(COLOR_GRAYTEXT));
+			}
+
+			return (INT_PTR)GetStockObject(NULL_BRUSH);
 		}
 
 		case WM_NOTIFY:
@@ -1139,7 +1153,7 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 				{
 					LPNMBCDROPDOWN nmlp = (LPNMBCDROPDOWN)lParam;
 
-					if(nmlp->hdr.idFrom == IDC_SETTINGS)
+					if(nmlp->hdr.idFrom == IDC_OK)
 					{
 						// Load menu
 						HMENU hMenu = LoadMenu(cfg.hLocale, MAKEINTRESOURCE(IDM_REDUCT)), hSubMenu = GetSubMenu(hMenu, 0);
@@ -1218,12 +1232,6 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 		{
 			switch(LOWORD(wParam))
 			{
-				case IDC_SETTINGS:
-				{
-					DialogBox(cfg.hLocale, MAKEINTRESOURCE(IDD_SETTINGS), hwndDlg, SettingsDlgProc);
-					break;
-				}
-
 				case IDC_WORKING_SET_CHK:
 				case IDC_SYSTEM_WORKING_SET_CHK:
 				case IDC_MODIFIED_PAGELIST_CHK:
@@ -1246,15 +1254,12 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 					ini.write(APP_NAME_SHORT, buffer, !ini.read(APP_NAME_SHORT, buffer, 0));
 
-					EnableWindow(GetDlgItem(hwndDlg, IDC_OK), (!ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) && !ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0)) ? FALSE : TRUE);
-
 					break;
 				}
 
 				case IDC_OK:
 				{
 					MemReduct(hwndDlg, FALSE);
-
 					break;
 				}
 
@@ -1280,23 +1285,28 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	RECT rc = {0};
 
 	if(uMsg == WM_MUTEX)
-		return WmMutexWrapper(hwndDlg, wParam, lParam);
+		return MutexWrapper(hwndDlg, wParam, lParam);
 
 	switch(uMsg)
 	{
 		case WM_INITDIALOG:
 		{
 			// Check mutex
-			CreateMutex(NULL, TRUE, APP_NAME_SHORT);
+			HANDLE hMutex = CreateMutex(NULL, FALSE, APP_NAME_SHORT);
 
 			if(wcsstr(GetCommandLine(), L"/restart"))
 			{
-				PostMessage(HWND_BROADCAST, WM_MUTEX, GetCurrentProcessId(), 0);
+				ReleaseMutex(hMutex);
+				CloseHandle(hMutex);
+
+				CreateMutex(NULL, FALSE, APP_NAME_SHORT);
+
+				SendMessage(HWND_BROADCAST, WM_MUTEX, GetCurrentProcessId(), FALSE);
 				ToggleVisible(hwndDlg, TRUE);
 			}
 			else if(GetLastError() == ERROR_ALREADY_EXISTS)
 			{
-				PostMessage(HWND_BROADCAST, WM_MUTEX, GetCurrentProcessId(), 1);
+				SendMessage(HWND_BROADCAST, WM_MUTEX, GetCurrentProcessId(), TRUE);
 				DestroyWindow(hwndDlg);
 
 				return FALSE;
@@ -1360,15 +1370,24 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 1, LVCFMT_RIGHT);
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 2, LVCFMT_LEFT);
 
-			// Redraw
-			RedrawMainWindow();
+			// Localize main window
+			LocalizeMainWindow();
 
-			// Privilege indicator
+			// Privilege indicator (Windows Vista and above)
 			if(cfg.bUnderUAC)
-				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_SETSHIELD, 0, TRUE); // Windows Vista (and above)
+			{
+				 // Set UAC shield to button
+				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_SETSHIELD, 0, TRUE);
 
+				// Set text margins
+				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_GETTEXTMARGIN, 0, (LPARAM)&rc);
+				rc.left += 7;
+				SendDlgItemMessage(hwndDlg, IDC_REDUCT, BCM_SETTEXTMARGIN, 0, (LPARAM)&rc);
+			}
+
+			// Privilege indicator (Windows XP)
 			if(!cfg.bAdminPrivilege && !cfg.bSupportedOS)
-				EnableWindow(GetDlgItem(hwndDlg, IDC_REDUCT), FALSE); // Windows XP
+				EnableWindow(GetDlgItem(hwndDlg, IDC_REDUCT), FALSE);
 
 			// Tray icon
 			MEMORY_USAGE mu = {0};

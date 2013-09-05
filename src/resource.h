@@ -26,7 +26,8 @@
 
 // Memory Reduction Dlg
 #define IDC_RESULT								100
-#define IDC_SETTINGS							101
+#define IDC_INFO								101
+#define IDC_SETTINGS							102
 
 // Settings Dlg
 #define IDC_TAB									100

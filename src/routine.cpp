@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 02/09/13
+// lastmod: 04/09/13
 
 #include "routine.h"
 
@@ -167,7 +167,7 @@ INT Lv_InsertItem(HWND hWnd, INT iCtrlId, CString lpszText, INT iItem, INT iSubI
 	return SendDlgItemMessage(hWnd, iCtrlId, (iSubItem > 0) ? LVM_SETITEM : LVM_INSERTITEM, 0, (LPARAM)&lvi);
 }
 
-// Number Format
+// Number format
 CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend, LPWSTR szSeparator)
 {
 	CString buffer = L"0";
@@ -211,6 +211,24 @@ CString number_format(LONGLONG lNumber, LPCWSTR lpszAppend, LPWSTR szSeparator)
 	buffer.AppendChar(L'\0');
 
 	return buffer;
+}
+
+// Date format
+CString date_format(SYSTEMTIME* st, LCID lcid, DWORD dwDateFlags, DWORD dwTimeFlags)
+{
+	CString date, time;
+	SYSTEMTIME lt = {0};
+	
+	if(!st)
+		GetLocalTime(&lt);
+
+	GetDateFormat(lcid, dwDateFlags, st ? st : &lt, NULL, date.GetBuffer(MAX_PATH), MAX_PATH);
+	date.ReleaseBuffer();
+
+	GetTimeFormat(lcid, dwTimeFlags, st ? st : &lt, NULL, time.GetBuffer(MAX_PATH), MAX_PATH);
+	time.ReleaseBuffer();
+
+	return date + L" " + time;
 }
 
 // Show Balloon Tip for Edit Control
@@ -819,24 +837,28 @@ HWND SetDlgItemTooltip(HWND hWnd, INT iDlgItem, CString lpszText)
 }
 
 // WM_MUTEX Wrapper
-INT WmMutexWrapper(HWND hwndDlg, WPARAM wParam, LPARAM lParam)
+//
+// wParam - PID
+// lParam - if "true" activate existing window, else destroy current process
+
+BOOL MutexWrapper(HWND hwndDlg, WPARAM wParam, LPARAM lParam)
 {
 	if(GetCurrentProcessId() == wParam)
-		return 0;
+		return FALSE;
 
-	if(!lParam)
-	{
-		SendMessage(hwndDlg, WM_CLOSE, 0, 0);
-	}
-	else
+	if(lParam)
 	{
 		ShowWindow(hwndDlg, SW_SHOW);
 
 		SetWindowPos(hwndDlg, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 		SetActiveWindow(hwndDlg);
 	}
+	else
+	{
+		DestroyWindow(hwndDlg);
+	}
 
-	return 1;
+	return TRUE;
 }
 
 // About Dialog Callback

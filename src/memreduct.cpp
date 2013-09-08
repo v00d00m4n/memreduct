@@ -134,10 +134,10 @@ DWORD GetMemoryUsage(LPMEMORY_USAGE lpmu)
 }
 
 // Show tray balloon tip
-BOOL ShowBalloonTip(DWORD dwInfoFlags, LPCWSTR lpcszTitle, LPCWSTR lpcszMessage)
+BOOL ShowBalloonTip(DWORD dwInfoFlags, LPCWSTR lpcszTitle, LPCWSTR lpcszMessage, BOOL bLimit = TRUE)
 {
 	// Check interval
-	if(cfg.dwLastBalloon && (GetTickCount() - cfg.dwLastBalloon) < ((UINT)ini.read(APP_NAME_SHORT, L"BalloonInterval", 10)) * 1000)
+	if(bLimit && cfg.dwLastBalloon && (GetTickCount() - cfg.dwLastBalloon) < ((UINT)ini.read(APP_NAME_SHORT, L"BalloonInterval", 10)) * 1000)
 		return FALSE;
 
 	// Configure structure
@@ -243,14 +243,18 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 	CString buffer;
 	INT iBuffer = IDYES;
 	
+	SYSTEMTIME st = {0};
+
 	MEMORY_USAGE mu = {0};
 	SYSTEM_MEMORY_LIST_COMMAND smlc;
+
+	LPARAM lParam[3] = {0};
 
 	// If user has no rights
 	if(!cfg.bAdminPrivilege)
 	{
 		if(cfg.bUnderUAC)
-			ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_UAC_WARNING));
+			ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_UAC_WARNING), FALSE);
 
 		return FALSE;
 	}
@@ -258,7 +262,10 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 	// Check settings
 	if(!ini.read(APP_NAME_SHORT, L"CleanWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanSystemWorkingSet", 1) && !ini.read(APP_NAME_SHORT, L"CleanModifiedPagelist", 0) && !ini.read(APP_NAME_SHORT, L"CleanStandbyPagelist", 0))
 	{
-		if(!bSilent)
+		if(bSilent)
+			ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_REDUCT_SELECTREGION), FALSE);
+
+		else
 			MessageBox(hWnd, ls(cfg.hLocale, IDS_REDUCT_SELECTREGION), APP_NAME, MB_OK | MB_ICONSTOP);
 
 		return FALSE;
@@ -271,21 +278,22 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 		return FALSE;
 
 	// Show difference: BEFORE
+	GetMemoryUsage(&mu);
+
+	lParam[0] = mu.dwPercentPhys;
+	lParam[1] = mu.dwPercentPageFile;
+	lParam[2] = mu.dwPercentSystemWorkingSet;
+
 	if(hWnd)
 	{
-		GetMemoryUsage(&mu);
-
-		cfg.lLastResult[0] = mu.dwPercentPhys;
 		buffer.Format(L"%d%%\0", mu.dwPercentPhys);
-		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 0, 1, -1, -1, cfg.lLastResult[0]);
+		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 0, 1);
 
-		cfg.lLastResult[1] = mu.dwPercentPageFile;
 		buffer.Format(L"%d%%\0", mu.dwPercentPageFile);
-		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 1, 1, -1, -1, cfg.lLastResult[1]);
+		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 1, 1);
 
-		cfg.lLastResult[2] = mu.dwPercentSystemWorkingSet;
 		buffer.Format(L"%d%%\0", mu.dwPercentSystemWorkingSet);
-		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 2, 1, -1, -1, cfg.lLastResult[2]);
+		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 2, 1);
 	}
 
 	// Working set
@@ -324,28 +332,40 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 		smlc = MemoryPurgeLowPriorityStandbyList;
 		NtSetSystemInformation(SystemMemoryListInformation, &smlc, sizeof(smlc));
 	}
-		
+
+	// Set last reduction time
+	GetLocalTime(&st);
+	ini.write(APP_NAME_SHORT, L"LastReductionTime", (DWORD)SystemTimeToUnixTime(&st));
+
 	// Show difference: AFTER
+	GetMemoryUsage(&mu);
+
+	lParam[0] = MAKELPARAM(lParam[0], mu.dwPercentPhys);
+	lParam[1] = MAKELPARAM(lParam[1], mu.dwPercentPageFile);
+	lParam[2] = MAKELPARAM(lParam[2], mu.dwPercentSystemWorkingSet);
+
 	if(hWnd)
 	{
 		GetMemoryUsage(&mu);
 
-		cfg.lLastResult[0] = MAKELPARAM(cfg.lLastResult[0], mu.dwPercentPhys);
 		buffer.Format(L"%d%%\0", mu.dwPercentPhys);
-		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 0, 2, -1, -1, cfg.lLastResult[0]);
+		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 0, 2, -1, -1, lParam[0]);
 
-		cfg.lLastResult[1] = MAKELPARAM(cfg.lLastResult[1], mu.dwPercentPageFile);
 		buffer.Format(L"%d%%\0", mu.dwPercentPageFile);
-		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 1, 2, -1, -1, cfg.lLastResult[1]);
+		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 1, 2, -1, -1, lParam[1]);
 
-		cfg.lLastResult[2] = MAKELPARAM(cfg.lLastResult[2], mu.dwPercentSystemWorkingSet);
 		buffer.Format(L"%d%%\0", mu.dwPercentSystemWorkingSet);
-		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 2, 2, -1, -1, cfg.lLastResult[2]);
+		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 2, 2, -1, -1, lParam[2]);
 
-		// Show last reduction time
-		SetDlgItemText(hWnd, IDC_INFO, date_format(NULL, LOCALE_SYSTEM_DEFAULT, DATE_AUTOLAYOUT | DATE_LONGDATE));
+		SetDlgItemText(hWnd, IDC_TIMESTAMP, date_format(&st, LOCALE_SYSTEM_DEFAULT));
 	}
-	
+
+	for(int i = 0; i < 3; i++)
+	{
+		buffer.Format(L"LastReductionItem%d", i);
+		ini.write(APP_NAME_SHORT, buffer, (DWORD)lParam[i]);
+	}
+
 	return TRUE;
 }
 
@@ -374,6 +394,9 @@ BOOL LocalizeMainWindow()
 
 	// Button
 	SetDlgItemText(cfg.hWnd, IDC_REDUCT, ls(cfg.hLocale, IDS_REDUCT));
+
+	// Refresh information
+	SendMessage(cfg.hWnd, WM_TIMER, UID, 0);
 
 	return TRUE;
 }
@@ -953,14 +976,14 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 							cfg.hLocale = LoadLanguage(buffer);
 						}
 
-						// Localize main window
-						LocalizeMainWindow();
-
 						// Size Unit
 						iBuffer = (IsDlgButtonChecked(tab_pages.hWnd[0], IDC_SHOW_AS_KILOBYTE_CHK) == BST_CHECKED);
 						ini.write(APP_NAME_SHORT, L"ShowAsKilobyte", iBuffer);
 						StringCchCopy(cfg.szUnit, _countof(cfg.szUnit), ls(cfg.hLocale, iBuffer ? IDS_UNIT_KB : IDS_UNIT_MB));
 						cfg.uUnitDivider = iBuffer ? 1024 : 1048576;
+
+						// Localize main window
+						LocalizeMainWindow();
 					}
 
 					// MEMORY REDUCTION
@@ -1057,9 +1080,13 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	RECT rc = {0};
 	CString buffer;
 	INT iBuffer = 0;
+
+	RECT rc = {0};
+	SYSTEMTIME st = {0};
+
+	LPARAM lLastReduct = 0;
 
 	switch(uMsg)
 	{
@@ -1084,8 +1111,11 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 				for(int k = 1; k < 3; k++)
 				{
-					buffer.Format(L"%d%%", k % 2  ? LOWORD(cfg.lLastResult[j]) : HIWORD(cfg.lLastResult[j]));
-					Lv_InsertItem(hwndDlg, IDC_RESULT, buffer, j, k);
+					buffer.Format(L"LastReductionItem%d", j);
+					lLastReduct = ini.read(APP_NAME_SHORT, buffer, 0);
+
+					buffer.Format(L"%d%%", k % 2  ? LOWORD(lLastReduct) : HIWORD(lLastReduct));
+					Lv_InsertItem(hwndDlg, IDC_RESULT, buffer, j, k, -1, -1, lLastReduct);
 				}
 			}
 
@@ -1094,7 +1124,8 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 				SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_OK), GWL_STYLE, GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_OK), GWL_STYLE) | BS_SPLITBUTTON);
 
 			// Show last reduction time
-//			SetDlgItemText(hwndDlg, IDC_INFO, date_format(NULL, LOCALE_SYSTEM_DEFAULT, DATE_AUTOLAYOUT | DATE_LONGDATE));
+			if(UnixTimeToSystemTime(ini.read(APP_NAME_SHORT, L"LastReductionTime", -1), &st))
+				SetDlgItemText(hwndDlg, IDC_TIMESTAMP, date_format(&st, LOCALE_SYSTEM_DEFAULT));
 
 			break;
 		}
@@ -1134,13 +1165,15 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 		case WM_CTLCOLORSTATIC:
 		case WM_CTLCOLORDLG:
 		{
-			if(GetDlgCtrlID((HWND)lParam) == IDC_INFO)
+			if(GetDlgCtrlID((HWND)lParam) == IDC_TIMESTAMP)
 			{
 				SetBkMode((HDC)wParam, TRANSPARENT);
 				SetTextColor((HDC)wParam, GetSysColor(COLOR_GRAYTEXT));
+
+				return (INT_PTR)GetSysColorBrush(COLOR_BTNFACE);
 			}
 
-			return (INT_PTR)GetStockObject(NULL_BRUSH);
+			return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
 		}
 
 		case WM_NOTIFY:
@@ -1370,9 +1403,6 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 1, LVCFMT_RIGHT);
 			Lv_InsertColumn(hwndDlg, IDC_MONITOR, L"", GetWindowDimension(GetDlgItem(hwndDlg, IDC_MONITOR), WIDTH, TRUE) / 2, 2, LVCFMT_LEFT);
 
-			// Localize main window
-			LocalizeMainWindow();
-
 			// Privilege indicator (Windows Vista and above)
 			if(cfg.bUnderUAC)
 			{
@@ -1401,8 +1431,11 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 			Shell_NotifyIcon(NIM_ADD, &nid);
 
-			// Timers
+			// Timer
 			SetTimer(hwndDlg, UID, ini.read(APP_NAME_SHORT, L"RefreshRate", 500), NULL);
+
+			// Localize main window
+			LocalizeMainWindow();
 
 			// Check Updates
 			if(ini.read(APP_NAME_SHORT, L"CheckUpdateAtStartup", 1))
@@ -1543,75 +1576,69 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_TIMER:
 		{
-			switch(wParam)
+			if(wParam == UID)
 			{		
-				case UID:
+				MEMORY_USAGE mu = {0};
+
+				iBuffer = GetMemoryUsage(&mu);
+
+				// Destroy tray icon
+				if(nid.hIcon)
+					DestroyIcon(nid.hIcon);
+
+				// Refresh tray info
+				nid.uFlags = NIF_ICON | NIF_TIP;
+				StringCchPrintf(nid.szTip, _countof(nid.szTip), ls(cfg.hLocale, IDS_TRAY_TOOLTIP), mu.dwPercentPhys, mu.dwPercentPageFile, mu.dwPercentSystemWorkingSet);
+				nid.hIcon = CreateMemIcon(iBuffer);
+
+				Shell_NotifyIcon(NIM_MODIFY, &nid);
+
+				// Auto-reduction
+				if(cfg.bAdminPrivilege && cfg.bAutoReduct && mu.dwPercentPhys >= cfg.uAutoReductPercents)
 				{
-					MEMORY_USAGE mu = {0};
-					iBuffer = GetMemoryUsage(&mu);
+					MemReduct(NULL, TRUE);
 
-					// Destroy tray icon
-					if(nid.hIcon)
-						DestroyIcon(nid.hIcon);
-
-					// Refresh tray info
-					nid.uFlags = NIF_ICON | NIF_TIP;
-					StringCchPrintf(nid.szTip, _countof(nid.szTip), ls(cfg.hLocale, IDS_TRAY_TOOLTIP), mu.dwPercentPhys, mu.dwPercentPageFile, mu.dwPercentSystemWorkingSet);
-					nid.hIcon = CreateMemIcon(iBuffer);
-
-					Shell_NotifyIcon(NIM_MODIFY, &nid);
-
-					// Auto-reduction
-					if(cfg.bAdminPrivilege && cfg.bAutoReduct && mu.dwPercentPhys >= cfg.uAutoReductPercents)
+					if(ini.read(APP_NAME_SHORT, L"BalloonShow", 1) && ini.read(APP_NAME_SHORT, L"BalloonAutoReduct", 1))
 					{
-						MemReduct(NULL, TRUE);
+						GetMemoryUsage(&mu);
 
-						if(ini.read(APP_NAME_SHORT, L"BalloonShow", 1) && ini.read(APP_NAME_SHORT, L"BalloonAutoReduct", 1))
-						{
-							GetMemoryUsage(&mu);
-
-							buffer.Format(ls(cfg.hLocale, IDS_BALLOON_AUTOREDUCT), cfg.uAutoReductPercents, mu.dwPercentPhys);
-							ShowBalloonTip(NIIF_INFO, APP_NAME, buffer);
-						}
+						buffer.Format(ls(cfg.hLocale, IDS_BALLOON_AUTOREDUCT), cfg.uAutoReductPercents, mu.dwPercentPhys);
+						ShowBalloonTip(NIIF_INFO, APP_NAME, buffer);
 					}
+				}
 
-					// Show balloon tips
-					if(ini.read(APP_NAME_SHORT, L"BalloonShow", 1))
-					{
-						if(mu.dwPercentPhys >= cfg.uDangerLevel && ini.read(APP_NAME_SHORT, L"BalloonDangerLevel", 1))
-							ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_DANGER_LEVEL));
+				// Show balloon tips
+				if(ini.read(APP_NAME_SHORT, L"BalloonShow", 1))
+				{
+					if(mu.dwPercentPhys >= cfg.uDangerLevel && ini.read(APP_NAME_SHORT, L"BalloonDangerLevel", 1))
+						ShowBalloonTip(NIIF_ERROR, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_DANGER_LEVEL));
 
-						else if(mu.dwPercentPhys >= cfg.uWarningLevel && ini.read(APP_NAME_SHORT, L"BalloonWarningLevel", 0))
-							ShowBalloonTip(NIIF_WARNING, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_WARNING_LEVEL));
-					}
+					else if(mu.dwPercentPhys >= cfg.uWarningLevel && ini.read(APP_NAME_SHORT, L"BalloonWarningLevel", 0))
+						ShowBalloonTip(NIIF_WARNING, APP_NAME, ls(cfg.hLocale, IDS_BALLOON_WARNING_LEVEL));
+				}
 
-					if(IsWindowVisible(hwndDlg))
-					{
-						// Physical memory
-						buffer.Format(L"%d%%", mu.dwPercentPhys);
+				if(IsWindowVisible(hwndDlg))
+				{
+					// Physical memory
+					buffer.Format(L"%d%%", mu.dwPercentPhys);
 
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, buffer, 0, 1, -1, -1, mu.dwPercentPhys);
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFreePhys, cfg.szUnit), 1, 1, -1, -1, mu.dwPercentPhys);
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullTotalPhys, cfg.szUnit), 2, 1, -1, -1, mu.dwPercentPhys);
+					Lv_InsertItem(hwndDlg, IDC_MONITOR, buffer, 0, 1, -1, -1, mu.dwPercentPhys);
+					Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFreePhys, cfg.szUnit), 1, 1, -1, -1, mu.dwPercentPhys);
+					Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullTotalPhys, cfg.szUnit), 2, 1, -1, -1, mu.dwPercentPhys);
 
-						// Pagefile memory
-						buffer.Format(L"%d%%", mu.dwPercentPageFile);
+					// Pagefile memory
+					buffer.Format(L"%d%%", mu.dwPercentPageFile);
 
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, buffer, 3, 1, -1, -1, mu.dwPercentPageFile);
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFreePageFile, cfg.szUnit), 4, 1, -1, -1, mu.dwPercentPageFile);
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullTotalPageFile, cfg.szUnit), 5, 1, -1, -1, mu.dwPercentPageFile);
+					Lv_InsertItem(hwndDlg, IDC_MONITOR, buffer, 3, 1, -1, -1, mu.dwPercentPageFile);
+					Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFreePageFile, cfg.szUnit), 4, 1, -1, -1, mu.dwPercentPageFile);
+					Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullTotalPageFile, cfg.szUnit), 5, 1, -1, -1, mu.dwPercentPageFile);
 
-						// System working set
-						buffer.Format(L"%d%%", mu.dwPercentSystemWorkingSet);
+					// System working set
+					buffer.Format(L"%d%%", mu.dwPercentSystemWorkingSet);
 
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, buffer, 6, 1, -1, -1, mu.dwPercentSystemWorkingSet);
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFreeSystemWorkingSet, cfg.szUnit), 7, 1, -1, -1, mu.dwPercentSystemWorkingSet);
-						Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullTotalSystemWorkingSet, cfg.szUnit), 8, 1, -1, -1, mu.dwPercentSystemWorkingSet);
-					}
-
-
-
-					break;
+					Lv_InsertItem(hwndDlg, IDC_MONITOR, buffer, 6, 1, -1, -1, mu.dwPercentSystemWorkingSet);
+					Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullFreeSystemWorkingSet, cfg.szUnit), 7, 1, -1, -1, mu.dwPercentSystemWorkingSet);
+					Lv_InsertItem(hwndDlg, IDC_MONITOR, number_format(mu.ullTotalSystemWorkingSet, cfg.szUnit), 8, 1, -1, -1, mu.dwPercentSystemWorkingSet);
 				}
 			}
 

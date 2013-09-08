@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 04/09/13
+// lastmod: 06/09/13
 
 #include "routine.h"
 
@@ -228,7 +228,7 @@ CString date_format(SYSTEMTIME* st, LCID lcid, DWORD dwDateFlags, DWORD dwTimeFl
 	GetTimeFormat(lcid, dwTimeFlags, st ? st : &lt, NULL, time.GetBuffer(MAX_PATH), MAX_PATH);
 	time.ReleaseBuffer();
 
-	return date + L" " + time;
+	return date + L", " + time;
 }
 
 // Show Balloon Tip for Edit Control
@@ -732,6 +732,9 @@ BOOL UnixTimeToSystemTime(time_t t, SYSTEMTIME* pst)
 {
 	LONGLONG ll = 0; // 64 bit value 
 	FILETIME ft = {0};
+
+	if(t < 0)
+		return FALSE;
 
 	ll = Int32x32To64(t, 10000000) + 116444736000000000ui64;
 

@@ -9,7 +9,7 @@ Download binaries on [product page](http://www.henrypp.org/?product=memreduct).
 
 Translation
 -----------
-Please make translation for Mem Reduct to your language, send me translated files to email. See "/src/language/" as an example.
+Please make translation for Mem Reduct to your language, send me translated files to email. See "/src/languages/" as an example.
 
 Requirements
 ------------
@@ -32,6 +32,18 @@ Features
 
 Changelog
 ---------
+<b>v2.4 (17 September 2013)</b>
+- Added tray icon customization
+- Improved UAC compatibility
+- Improved admin right checking
+- Improved tray icon painting
+- Improved updates checking
+- Improved 64-bits OS compatibility
+- Changed application icon
+- Some cosmetics fixes
+- Fixed minor bugs
+- Optimized code
+
 <b>v2.3 (14 July 2012)</b>
 - Improved compatibility with Windows 8 Release Preview
 - Added "Bulgarian" translation (by nahalnik)

@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 06/09/13
+// lastmod: 17/09/13
 
 #ifndef __ROUTINE_H__
 #define __ROUTINE_H__
@@ -60,7 +60,7 @@ BOOL IsAutorunExists(LPCWSTR lpszName);
 
 CString ls(HINSTANCE hInstance, UINT uID);
 CString GetFileVersion(LPCTSTR pszPath);
-HINSTANCE LoadLanguage(LPCTSTR pszPath, LPCTSTR pszVersion = NULL);
+HINSTANCE LoadLanguage(LPCTSTR pszPath, LPCTSTR pszVersion = NULL, DWORD* dwLanguageId = NULL);
 INT VersionCompare(CString version1, CString version2);
 
 CString ClipboardGet();

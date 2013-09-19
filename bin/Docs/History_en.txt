@@ -1,3 +1,15 @@
+v2.4 (17 September 2013)
+- Added tray icon customization
+- Improved UAC compatibility
+- Improved admin right checking
+- Improved tray icon painting
+- Improved updates checking
+- Improved 64-bits OS compatibility
+- Changed application icon
+- Some cosmetics fixes
+- Fixed minor bugs
+- Optimized code
+
 v2.3 (14 July 2012)
 - Improved compatibility with Windows 8 Release Preview
 - Added "Bulgarian" translation (by nahalnik)

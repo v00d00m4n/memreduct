@@ -60,6 +60,8 @@ struct CONFIG
 	LPARAM lLastResult[3];
 
 	LOGFONT lf;
+
+	DWORD dwLanguageId;
 };
 
 typedef struct _TAB_PAGES

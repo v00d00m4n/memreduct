@@ -8,7 +8,7 @@
 *	http://www.henrypp.org/
 *************************************/
 
-// lastmod: 06/09/13
+// lastmod: 17/09/13
 
 #include "routine.h"
 
@@ -218,9 +218,12 @@ CString date_format(SYSTEMTIME* st, LCID lcid, DWORD dwDateFlags, DWORD dwTimeFl
 {
 	CString date, time;
 	SYSTEMTIME lt = {0};
-	
+
 	if(!st)
 		GetLocalTime(&lt);
+
+	if(!lcid)
+		lcid = MAKELCID(LANG_ENGLISH, SORT_DEFAULT);
 
 	GetDateFormat(lcid, dwDateFlags, st ? st : &lt, NULL, date.GetBuffer(MAX_PATH), MAX_PATH);
 	date.ReleaseBuffer();
@@ -584,13 +587,26 @@ CString ls(HINSTANCE hInstance, UINT uID)
 	return buffer;
 }
 
+BOOL CALLBACK EnumResLangProc(HMODULE hModule, LPCTSTR lpszType, LPCTSTR lpszName, WORD wIDLanguage, LPARAM* lParam)
+{
+	if(lParam)
+		*lParam = MAKELANGID(wIDLanguage, SUBLANG_DEFAULT);
+
+	return TRUE;
+}
+
 // Get language module HINSTANCE
-HINSTANCE LoadLanguage(LPCTSTR pszPath, LPCTSTR pszVersion)
+HINSTANCE LoadLanguage(LPCTSTR pszPath, LPCTSTR pszVersion, DWORD* dwLanguageId)
 {
 	if(pszVersion && VersionCompare(pszVersion, GetFileVersion(pszPath)))
 		return NULL;
 
-	return LoadLibraryEx(pszPath, 0, LOAD_LIBRARY_AS_DATAFILE);
+	HINSTANCE hModule = LoadLibraryEx(pszPath, 0, LOAD_LIBRARY_AS_DATAFILE);
+
+	if(dwLanguageId)
+		EnumResourceLanguages(hModule, MAKEINTRESOURCE(RT_DIALOG), MAKEINTRESOURCE(100), (ENUMRESLANGPROC)EnumResLangProc, (LPARAM)dwLanguageId);
+
+	return hModule;
 }
 
 // Get EXE/DLL version string

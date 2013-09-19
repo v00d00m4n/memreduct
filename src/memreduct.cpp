@@ -191,14 +191,14 @@ HICON CreateMemIcon(DWORD dwData)
 	HBITMAP hBitmap = CreateCompatibleBitmap(hDC, rc.right, rc.bottom);
     HBITMAP hBitmapMask = CreateCompatibleBitmap(hDC, rc.right, rc.bottom);
 	ReleaseDC(NULL, hDC);
-
+	
     HBITMAP hOldBitMap = (HBITMAP)SelectObject(hCompatibleDC, hBitmap);
 
 	// Fill rectangle
 	COLORREF clrOld = SetBkColor(hCompatibleDC, (bTrayChangeBg && clrIndicator) ? clrIndicator : clrTrayBackground);
 	ExtTextOut(hCompatibleDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
 	SetBkColor(hCompatibleDC, clrOld);
-
+	
 	// Create font
 	HFONT hTrayFont = CreateFontIndirect(&cfg.lf);
 	SelectObject(hCompatibleDC, hTrayFont);
@@ -220,7 +220,7 @@ HICON CreateMemIcon(DWORD dwData)
 		DeleteObject(hBrush);
 		DeleteObject(hRgn);
 	}
-
+	
 	SelectObject(hDC, hOldBitMap);
 
 	// Create icon
@@ -357,7 +357,7 @@ BOOL MemReduct(HWND hWnd, BOOL bSilent)
 		buffer.Format(L"%d%%\0", mu.dwPercentSystemWorkingSet);
 		Lv_InsertItem(hWnd, IDC_RESULT, buffer, 2, 2, -1, -1, lParam[2]);
 
-		SetDlgItemText(hWnd, IDC_TIMESTAMP, date_format(&st, LOCALE_SYSTEM_DEFAULT));
+		SetDlgItemText(hWnd, IDC_TIMESTAMP, date_format(&st, cfg.dwLanguageId, DATE_LONGDATE));
 	}
 
 	for(int i = 0; i < 3; i++)
@@ -714,7 +714,7 @@ INT_PTR WINAPI PagesDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 					GetDlgItemText(hwndDlg, IDC_LANGUAGE_CB, szBuffer, MAX_PATH);
 					buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, szBuffer);
 
-					hModule = LoadLanguage(buffer);
+					hModule = LoadLanguage(buffer, APP_VERSION);
 				}
 
 				SetDlgItemText(hwndDlg, IDC_LANGUAGE_INFO, (iBuffer && !hModule) ? L"unknown" : ls(hModule, IDS_TRANSLATION_INFO));
@@ -964,6 +964,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 						{
 							ini.write(APP_NAME_SHORT, L"Language", (DWORD)0);
 							cfg.hLocale = NULL;
+							cfg.dwLanguageId = 0;
 						}
 						else
 						{
@@ -973,7 +974,7 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 							ini.write(APP_NAME_SHORT, L"Language", szBuffer);
 
 							buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, szBuffer);
-							cfg.hLocale = LoadLanguage(buffer);
+							cfg.hLocale = LoadLanguage(buffer, APP_VERSION, &cfg.dwLanguageId);
 						}
 
 						// Size Unit
@@ -1125,7 +1126,7 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 			// Show last reduction time
 			if(UnixTimeToSystemTime(ini.read(APP_NAME_SHORT, L"LastReductionTime", -1), &st))
-				SetDlgItemText(hwndDlg, IDC_TIMESTAMP, date_format(&st, LOCALE_SYSTEM_DEFAULT));
+				SetDlgItemText(hwndDlg, IDC_TIMESTAMP, date_format(&st, cfg.dwLanguageId, DATE_LONGDATE));
 
 			break;
 		}
@@ -1233,11 +1234,11 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 						case CDDS_SUBITEM | CDDS_ITEMPREPAINT:
 						{
-							if(nmlp->iSubItem)
+							if(nmlp->iSubItem && ini.read(APP_NAME_SHORT, L"ColorIndicationListView", 1))
 							{
 								nmlp->clrText = ini.read(APP_NAME_SHORT, L"ListViewTextClr", COLOR_LISTVIEW_TEXT);
 
-								if(nmlp->nmcd.lItemlParam)
+								if(nmlp->nmcd.lItemlParam && LOWORD(nmlp->nmcd.lItemlParam) != HIWORD(nmlp->nmcd.lItemlParam))
 								{
 									if(nmlp->iSubItem == 1 && LOWORD(nmlp->nmcd.lItemlParam) > HIWORD(nmlp->nmcd.lItemlParam))
 										nmlp->clrText = ini.read(APP_NAME_SHORT, L"LevelDangerClr", COLOR_LEVEL_DANGER);
@@ -1246,7 +1247,7 @@ INT_PTR CALLBACK ReductDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 										nmlp->clrText = ini.read(APP_NAME_SHORT, L"LevelNormalClr", COLOR_LEVEL_NORMAL);
 								}
 
-								lResult = CDRF_NEWFONT;
+								lResult |= CDRF_NEWFONT;
 							}
 
 							break;
@@ -1327,7 +1328,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			// Check mutex
 			HANDLE hMutex = CreateMutex(NULL, FALSE, APP_NAME_SHORT);
 
-			if(wcsstr(GetCommandLine(), L"/restart"))
+			if(wcsstr(GetCommandLine(), L"/reduct"))
 			{
 				ReleaseMutex(hMutex);
 				CloseHandle(hMutex);
@@ -1440,6 +1441,10 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			// Check Updates
 			if(ini.read(APP_NAME_SHORT, L"CheckUpdateAtStartup", 1))
 				_beginthreadex(NULL, 0, &CheckUpdates, (LPVOID)1, 0, NULL);
+
+			// Check command line
+			if(wcsstr(GetCommandLine(), L"/reduct"))
+				SendMessage(hwndDlg, WM_COMMAND, MAKELPARAM(IDM_TRAY_REDUCT, 0), 0);
 
 			break;
 		}
@@ -1757,7 +1762,7 @@ LRESULT CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						GetModuleFileName(NULL, buffer.GetBuffer(MAX_PATH), MAX_PATH);
 						buffer.ReleaseBuffer();
 
-						if(RunElevated(hwndDlg, buffer, L"/restart"))
+						if(RunElevated(hwndDlg, buffer, L"/reduct"))
 							DestroyWindow(hwndDlg);
 
 						else
@@ -1841,7 +1846,7 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	buffer.Format(L"%s\\Languages\\%s.dll", cfg.szCurrentDir, ini.read(APP_NAME_SHORT, L"Language", MAX_PATH, 0));
 
 	if(FileExists(buffer))
-		cfg.hLocale = LoadLanguage(buffer, APP_VERSION);
+		cfg.hLocale = LoadLanguage(buffer, APP_VERSION, &cfg.dwLanguageId);
 
 	// Initialize and create window
 	icex.dwSize = sizeof(icex);

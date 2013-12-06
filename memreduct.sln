@@ -29,6 +29,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "German", "src\languages\Ger
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Portuguese (Brazil)", "src\languages\Portuguese (Brazil)\Portuguese (Brazil).vcxproj", "{09947EB5-B704-4D09-983E-409947D238B5}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Korean", "src\languages\Korean\Korean.vcxproj", "{79C4B650-7016-47F1-847C-3B68C82087B0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -91,6 +93,10 @@ Global
 		{09947EB5-B704-4D09-983E-409947D238B5}.Debug|Win32.Build.0 = Debug|Win32
 		{09947EB5-B704-4D09-983E-409947D238B5}.Release|Win32.ActiveCfg = Release|Win32
 		{09947EB5-B704-4D09-983E-409947D238B5}.Release|Win32.Build.0 = Release|Win32
+		{79C4B650-7016-47F1-847C-3B68C82087B0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{79C4B650-7016-47F1-847C-3B68C82087B0}.Debug|Win32.Build.0 = Debug|Win32
+		{79C4B650-7016-47F1-847C-3B68C82087B0}.Release|Win32.ActiveCfg = Release|Win32
+		{79C4B650-7016-47F1-847C-3B68C82087B0}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

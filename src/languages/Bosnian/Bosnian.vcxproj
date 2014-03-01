@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{3EA02FF7-0281-444B-80E4-6D2135730472}</ProjectGuid>
+    <ProjectGuid>{ae1ad102-b517-4140-9e4c-915d84c92e22}</ProjectGuid>
     <RootNamespace>Bosnian</RootNamespace>
     <ProjectName>Bosnian</ProjectName>
   </PropertyGroup>

@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{E25E4094-649A-4E4F-99DE-77C3BE1146A5}</ProjectGuid>
+    <ProjectGuid>{0F13D90E-067A-4F8F-8675-1E6C1DA10915}</ProjectGuid>
     <RootNamespace>Basque</RootNamespace>
     <ProjectName>Basque</ProjectName>
   </PropertyGroup>

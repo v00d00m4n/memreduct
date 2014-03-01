@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{9F4AF041-FDB1-4BF7-B35F-A7684A45308E}</ProjectGuid>
+    <ProjectGuid>{5075d92e-64b4-4349-8911-19b42518719c}</ProjectGuid>
     <RootNamespace>MemReduct</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -45,6 +45,8 @@
     <CustomBuildBeforeTargets>
     </CustomBuildBeforeTargets>
     <GenerateManifest>false</GenerateManifest>
+    <LinkIncremental>
+    </LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>$(ProjectDir)..\;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;</IncludePath>

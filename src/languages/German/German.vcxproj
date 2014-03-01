@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{F52BBAD0-12E6-4EDE-A991-1C4ADCBBA305}</ProjectGuid>
+    <ProjectGuid>{93ffd214-e6d8-49b0-bbf2-0750d45c2a5a}</ProjectGuid>
     <RootNamespace>German</RootNamespace>
     <ProjectName>German</ProjectName>
   </PropertyGroup>

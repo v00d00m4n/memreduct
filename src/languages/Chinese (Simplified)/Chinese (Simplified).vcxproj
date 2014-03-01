@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{646A4E17-2D6A-41B7-A0F5-302C8818BA21}</ProjectGuid>
+    <ProjectGuid>{3a15e9a1-ce8f-4dc8-87dc-45e952d2bab6}</ProjectGuid>
     <RootNamespace>Chinese (Simplified)</RootNamespace>
     <ProjectName>Chinese (Simplified)</ProjectName>
   </PropertyGroup>

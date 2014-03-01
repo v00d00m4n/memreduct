@@ -11,9 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{9de6aed6-2e7a-4949-8285-d6f21997d1e8}</ProjectGuid>
-    <RootNamespace>Spanish</RootNamespace>
-    <ProjectName>Spanish</ProjectName>
+    <ProjectGuid>{8bb502dd-9d6b-4d0e-9906-5b4eb7d01ae1}</ProjectGuid>
+    <RootNamespace>Latvian</RootNamespace>
+    <ProjectName>Latvian</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

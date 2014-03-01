@@ -2,13 +2,13 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Header">
-      <UniqueIdentifier>{30a8b65d-5c33-4884-a6b9-ef12b90c602a}</UniqueIdentifier>
+      <UniqueIdentifier>{b589ab90-2c01-4bd9-af61-4bc04502a1fa}</UniqueIdentifier>
     </Filter>
     <Filter Include="Resource">
-      <UniqueIdentifier>{be770f1d-e7d3-4427-a92a-5da640434b9a}</UniqueIdentifier>
+      <UniqueIdentifier>{63c40adc-9a88-4112-af9d-cc81f7daa8ef}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source">
-      <UniqueIdentifier>{f690180a-c62f-479a-abfd-d49439802d21}</UniqueIdentifier>
+      <UniqueIdentifier>{13405e08-c70e-45c3-bdd8-c118f186bb0e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
